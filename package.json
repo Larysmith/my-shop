@@ -14,6 +14,7 @@
     "db:catalog": "node scripts/catalog-probe.mjs",
     "db:probe:checkout": "node scripts/probe-checkout-rpc.mjs",
     "db:reseed": "node scripts/generate-reseed.mjs",
+    "images:update": "node scripts/update-product-images.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

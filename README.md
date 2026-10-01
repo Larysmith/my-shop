@@ -74,6 +74,8 @@ npm run db:verify    # 13 RLS and grant assertions
 which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_order`,
 `decrement_stock`) to anonymous callers. `npm run db:verify` asserts they return 401.
 
+| `npm run images:update` | Download a Pixabay photo per product into `public/products/` and save the local paths. Dry run unless `-- --write` |
+
 ## Commands
 
 | Command | Purpose |
@@ -106,6 +108,13 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
   writes `stripe_event_id` in one conditional update, so a repeat delivery loses the race and
   returns `already_applied` instead of decrementing stock twice. Stock is rebuilt from
   `order_items`, never from the event payload.
+- **Product images** are self-hosted in `public/products/`, not hotlinked. `npm run images:update`
+  fetches the 1280px variant from Pixabay, verifies each one is really a JPEG above a size floor,
+  and stores a local path such as `/products/merino-wool-socks.jpg`. Remote URLs were rejected
+  deliberately: the `pixabay.com/get/<token>` URLs the API returns proved non-deterministic —
+  repeated searches returned entirely different URL sets minutes apart, and one URL that answered
+  200 began answering 400 consistently. Storing those would let product images rot silently.
+  Already-downloaded files are reused; `-- --force` re-fetches.
 - **Email** — `src/lib/server/email/` renders the four templates in `templates.ts` (HTML plus a
   plain-text alternative), posts them to Brevo in `brevo.ts`, and records every attempt in
   `email_log` in `send.ts`. A delivery failure is logged, not thrown: callers are Stripe

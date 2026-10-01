@@ -15,6 +15,13 @@ const nextConfig: NextConfig = {
         hostname: "pixabay.com",
         pathname: "/get/**",
       },
+      // Google serves OAuth profile pictures from this host. Without it,
+      // rendering a signed-in user's avatar throws instead of degrading.
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
+      },
     ],
   },
 };

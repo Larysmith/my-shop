@@ -38,7 +38,7 @@ const headers = {
 
 const products = await (
   await fetch(
-    `${base}/rest/v1/products?select=id,name,slug,category,status,sort_order&order=slug`,
+    `${base}/rest/v1/products?select=id,name,slug,category,status,sort_order,image_url&order=slug`,
     { headers, signal: AbortSignal.timeout(20_000) },
   )
 ).json();
@@ -75,9 +75,9 @@ if (Array.isArray(products)) {
     const own = Array.isArray(variants)
       ? variants.filter((v) => v.product_id === product.id)
       : [];
-    console.log(
-      `${String(product.sort_order).padStart(2)}  ${product.slug.padEnd(32)} variants=${own.length}`,
-    );
+console.log(
+  `${String(product.sort_order).padStart(2)}  ${product.slug.padEnd(32)} variants=${own.length}  image=${product.image_url ?? "(none)"}`,
+);
     for (const variant of own) {
       console.log(
         `      ${variant.title.padEnd(14)} ${variant.sku.padEnd(18)} ${String(variant.price_cents).padStart(6)}  stock=${variant.stock} default=${variant.is_default} active=${variant.is_active}`,

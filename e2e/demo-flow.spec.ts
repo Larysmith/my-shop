@@ -147,3 +147,31 @@ test("sold-out variants cannot be added to the cart", async ({ page }) => {
   ).toBeDisabled();
   await expect(page.getByText("out of stock")).toBeVisible();
 });
+
+test("the navbar reflects the demo session, and logging out clears it", async ({ page }) => {
+  // The navbar resolves the demo session on the client: it is stored in
+  // localStorage, so the server reports no user. This asserts that the
+  // client-side fallback still swaps the login link for the user menu.
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "Login" })).toBeVisible();
+
+  await page.goto("/login");
+  await page.getByRole("button", { name: /owner@lary-shop.test/ }).click();
+  // The seeded owner account lands on the admin view, not the home page.
+  await expect(page).toHaveURL(/\/admin$/);
+
+  // Signed in: the account trigger replaces the login link.
+  await expect(
+    page.getByRole("button", { name: "Account menu" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Login" })).toHaveCount(0);
+  // Only the owner is seeded as an admin, so the admin link must appear.
+  await expect(page.getByRole("link", { name: "Admin" }).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Account menu" }).click();
+  await page.getByRole("menuitem", { name: "Logout" }).click();
+
+  // Back to the signed-out layout.
+  await expect(page.getByRole("link", { name: "Login" })).toBeVisible();
+});
+
