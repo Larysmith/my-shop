@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { initializeTransaction } from "@/lib/server/paystack/client";
+import { signOrderToken } from "@/lib/server/orders/view-token";
 import { requireSiteUrl } from "@/lib/server/site-url";
 import { computeTotals, SHOP_CURRENCY } from "@/lib/pricing";
 import type { CartLine } from "@/lib/cart/types";
@@ -156,8 +157,11 @@ export async function startPaystackCheckout(
       amount: totalAmount,
       currency: SHOP_CURRENCY,
       email: input.email.trim(),
-      callbackUrl: `${siteUrl}/checkout/success?order=${encodeURIComponent(
-        pending.order_number,
+      // The token, not the bare order number, is what the success page accepts.
+      // Order numbers are not secret — they are printed in emails — so passing
+      // one alone would let anyone who saw it read the order. See view-token.ts.
+      callbackUrl: `${siteUrl}/checkout/success?token=${encodeURIComponent(
+        signOrderToken(pending.order_number),
       )}`,
       metadata: {
         orderNumber: pending.order_number,

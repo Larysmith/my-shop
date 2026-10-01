@@ -10,6 +10,7 @@
     "check:supabase": "node scripts/check-supabase.mjs",
     "check:email": "node scripts/check-email-provider.mjs",
     "check:paystack": "node scripts/check-paystack.mjs",
+    "auth:google": "node scripts/google-oauth-setup.mjs",
     "email:test": "node --conditions=react-server scripts/send-test-email.mjs",
     "email:smtp": "node scripts/configure-auth-smtp.mjs",
     "email:smtp:verify": "node scripts/configure-auth-smtp.mjs --verify",
@@ -23,7 +24,7 @@
     "db:reseed": "node scripts/generate-reseed.mjs",
     "images:update": "node scripts/update-product-images.ts",
     "test:unit": "node --conditions=react-server --import ./tests/register.mjs --test tests/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "node scripts/run-e2e.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

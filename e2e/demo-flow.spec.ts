@@ -162,6 +162,31 @@ test("sold-out variants cannot be added to the cart", async ({ page }) => {
   await expect(page.getByText("out of stock")).toBeVisible();
 });
 
+test("products render the catalog photo rather than the placeholder art", async ({
+  page,
+}) => {
+  // Regression guard. ProductImage falls back to generated SVG art whenever
+  // imageUrl is null, and that art prints the product id as a caption. The demo
+  // catalog used to leave imageUrl null, so demo mode silently reverted to
+  // placeholder art after the photos were added to the database — the database
+  // was never the problem.
+  await page.goto("/products");
+  await expect(page.locator('img[src*="/_next/image"]').first()).toBeVisible();
+  await expect(page.getByText("P-001", { exact: true })).toHaveCount(0);
+
+  // The detail page and cart read the product image too, not just the grid.
+  await page.goto("/products/heavyweight-hoodie");
+  await expect(
+    page.locator('img[src*="heavyweight-hoodie"]').first(),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Add to cart" }).first().click();
+  await page.goto("/cart");
+  await expect(
+    page.locator('img[src*="heavyweight-hoodie"]').first(),
+  ).toBeVisible();
+});
+
 test("the navbar reflects the demo session, and logging out clears it", async ({ page }) => {
   // The navbar resolves the demo session on the client: it is stored in
   // localStorage, so the server reports no user. This asserts that the

@@ -1,15 +1,22 @@
 import Link from "next/link";
 import ProductGrid from "@/components/product/ProductGrid";
-import { catalog } from "@/lib/catalog";
+import { loadCatalog } from "@/lib/server/shop-catalog";
 import { DEMO_MODE } from "@/lib/demo/types";
+import { FREE_SHIPPING_THRESHOLD_AMOUNT, SHOP_CURRENCY, formatPrice } from "@/lib/pricing";
+
+const freeShipping = formatPrice(FREE_SHIPPING_THRESHOLD_AMOUNT, SHOP_CURRENCY);
 
 const VALUE_POINTS = [
-  { title: "Free shipping over $75", body: "Flat $5 below that, no surprises at checkout." },
+  {
+    title: `Free shipping over ${freeShipping}`,
+    body: `A flat fee below that, no surprises at checkout.`,
+  },
   { title: "Tracked guest orders", body: "Look up any order with the number and your email." },
   { title: "30-day returns", body: "Unworn and in the original packaging, no questions." },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const catalog = await loadCatalog();
   return (
     <>
       <section className="mx-auto max-w-6xl px-4 pt-16 pb-10 sm:px-6 lg:px-8">
@@ -25,7 +32,7 @@ export default function Home() {
         </h1>
         <p className="mt-3 max-w-xl text-base leading-7 text-foreground/60">
           A small, deliberate collection of everyday pieces. Free shipping on orders
-          over $75.
+          over {freeShipping}.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">

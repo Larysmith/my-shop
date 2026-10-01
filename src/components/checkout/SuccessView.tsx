@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useDemo } from "@/components/demo/DemoProvider";
 import { formatPrice } from "@/lib/pricing";
 import type { OrderStatus } from "@/lib/demo/types";
@@ -33,10 +32,8 @@ const STATUS_COPY: Record<OrderStatus, { label: string; blurb: string }> = {
   },
 };
 
-export default function SuccessView() {
-  const searchParams = useSearchParams();
+export default function SuccessView({ orderNumber }: { orderNumber: string }) {
   const { getOrder, user, hydrated } = useDemo();
-  const orderNumber = searchParams.get("order") ?? "";
   const order = getOrder(orderNumber);
 
   if (!hydrated) {

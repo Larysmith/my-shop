@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { DEMO_MODE } from "@/lib/demo/types";
 
 // Runs on every matched request to refresh the auth cookie before render, and
 // to enforce the /account and /admin guards. Lives outside the app directory
@@ -43,7 +44,16 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (!claims && (pathname.startsWith("/account") || pathname.startsWith("/admin"))) {
+  // Demo mode has no Supabase session at all: the demo session lives in
+  // localStorage, so there is no cookie to find and `claims` is always null.
+  // Applying the guard here would bounce every demo visitor off /account and
+  // /admin to the login page, which is exactly what those pages must show in
+  // demo mode.
+  if (
+    !DEMO_MODE &&
+    !claims &&
+    (pathname.startsWith("/account") || pathname.startsWith("/admin"))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectTo", pathname);

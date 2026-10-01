@@ -1,4 +1,4 @@
-import { findVariant } from "@/lib/catalog";
+import { catalog, findVariant } from "@/lib/catalog";
 import {
   FREE_SHIPPING_THRESHOLD_AMOUNT,
   SHOP_CURRENCY,
@@ -18,7 +18,7 @@ type SeedLine = { variantId: string; quantity: number };
 
 function buildItems(lines: SeedLine[]): DemoOrderItem[] {
   return lines.map(({ variantId, quantity }) => {
-    const found = findVariant(variantId);
+    const found = findVariant(catalog, variantId);
     if (!found) {
       throw new Error(`Seed references unknown variant: ${variantId}`);
     }

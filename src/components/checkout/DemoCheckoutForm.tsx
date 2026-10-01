@@ -1,26 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/useCart";
-import { useAuth } from "@/components/auth/AuthProvider";
+import { useDemo } from "@/components/demo/DemoProvider";
 import CheckoutFields, {
   validateCheckout,
   type CheckoutField,
 } from "@/components/checkout/CheckoutFields";
-import { startPaystackCheckout } from "@/app/checkout/actions";
 import type { DemoShipping } from "@/lib/demo/types";
 
 /**
- * Production checkout.
+ * Demo-mode checkout: writes a simulated order to localStorage.
  *
- * Reads the user from the shared auth context, which works in both modes, and
- * submits through the Paystack Server Action. It deliberately never touches
- * `useDemo()`: that hook throws outside `<DemoProvider>`, and production mounts
- * no demo provider.
+ * Split from the production form because `useDemo()` throws outside
+ * `<DemoProvider>`, and production mounts no demo provider. Only this component
+ * is rendered in demo mode, so the hook is never called in production.
  */
-export default function CheckoutForm() {
+export default function DemoCheckoutForm() {
   const { lines, subtotalAmount, shippingAmount, totalAmount, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, placeOrder } = useDemo();
+  const router = useRouter();
 
   const [values, setValues] = useState<Record<CheckoutField, string>>({
     email: user?.email ?? "",
@@ -34,19 +34,15 @@ export default function CheckoutForm() {
     customerNotes: "",
   });
   const [errors, setErrors] = useState<Partial<Record<CheckoutField, string>>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitError] = useState<string | null>(null);
 
-  async function handleSubmit(event: React.FormEvent) {
+  function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (lines.length === 0 || submitting) return;
+    if (lines.length === 0) return;
 
     const found = validateCheckout(values);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
-
-    setSubmitting(true);
-    setSubmitError(null);
 
     const shipping: DemoShipping = {
       name: values.name.trim(),
@@ -58,36 +54,24 @@ export default function CheckoutForm() {
       country: values.country.trim().toUpperCase(),
     };
 
-    // The Server Action re-prices from the database and returns a hosted payment
-    // URL. The cart is cleared only once Paystack has accepted the transaction.
-    const result = await startPaystackCheckout({
+    const order = placeOrder({
       email: values.email,
       shipping,
       lines,
       customerNotes: values.customerNotes.trim() || undefined,
     });
 
-    if (!result.ok) {
-      setSubmitError(result.error);
-      setSubmitting(false);
-      return;
-    }
-
     clearCart();
-    // A full navigation, not a router.push: the target is Paystack's hosted page,
-    // so there is no client-side route to change.
-    window.location.href = result.url;
+    router.push(`/checkout/success?order=${order.orderNumber}`);
   }
 
   return (
     <CheckoutFields
       values={values}
       errors={errors}
-      onChange={(field, value) =>
-        setValues((prev) => ({ ...prev, [field]: value }))
-      }
+      onChange={(field, value) => setValues((prev) => ({ ...prev, [field]: value }))}
       onSubmit={handleSubmit}
-      submitting={submitting}
+      submitting={false}
       submitError={submitError}
       lines={lines}
       subtotalAmount={subtotalAmount}

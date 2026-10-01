@@ -1,34 +1,19 @@
-// Demo catalog. Stands in for the Supabase `products` + `product_variants`
-// tables, so the showcase runs with no backend. Every variant carries its own
-// price and stock, mirroring how the live catalog is stored.
-//
-// Prices are minor units of the shop currency (NGN kobo) and match the values
-// that migration 0008 writes to `product_variants`, so demo and live look the same.
-//
-// `priceAmount` on a product is the price of its default variant, kept so the
-// existing card, grid and cart code can keep treating a product as a single
-// priced thing.
+/**
+ * Demo catalog. Stands in for the Supabase `products` + `product_variants`
+ * tables so the showcase runs with no backend.
+ *
+ * Prices are minor units of the shop currency (NGN kobo) and match the values
+ * migration 0008 writes to `product_variants`, so demo and live look identical.
+ *
+ * In production the catalog comes from `getCatalog()` in `@/lib/server/catalog`
+ * instead. This file is only reachable when NEXT_PUBLIC_DEMO_MODE is on.
+ */
 
-export type Variant = {
-  id: string;
-  title: string;
-  sku: string;
-  priceAmount: number;
-  stock: number;
-  swatch: string;
-};
+import type { Product, Variant } from "@/lib/catalog-types";
+import { queryCatalog as queryProductList } from "@/lib/catalog-types";
 
-export type Product = {
-  id: string;
-  name: string;
-  slug: string;
-  category: string;
-  priceAmount: number;
-  imageUrl: string | null;
-  description: string;
-  details: string[];
-  variants: Variant[];
-};
+export type { Product, Variant, SortKey } from "@/lib/catalog-types";
+export { getDefaultVariant, findVariant, queryCatalog as filterCatalog } from "@/lib/catalog-types";
 
 function variant(
   productId: string,
@@ -55,19 +40,19 @@ export const catalog: Product[] = [
     slug: "everyday-cotton-tee",
     category: "Apparel",
     priceAmount: 1800000,
-    imageUrl: null,
+    imageUrl: "/products/everyday-cotton-tee.jpg",
     description:
-      "A 180gsm combed cotton tee with a relaxed fit that holds its shape wash after wash.",
+      "A midweight jersey tee that holds its shape after washing. Cut a little boxy so it layers over a tee.",
     details: [
-      "180gsm combed ring-spun cotton",
-      "Pre-shrunk, garment dyed",
-      "Ribbed collar with twin-needle hem",
+      "100% combed cotton, 180gsm",
+      "Pre-shrunk, garment washed",
+      "Ribbed collar with taped neckline",
     ],
     variants: [
-      variant("p-001", 0, "Bone / S", 2800, 12, "#e7e0d3"),
-      variant("p-001", 1, "Bone / M", 2800, 18, "#e7e0d3"),
-      variant("p-001", 2, "Bone / L", 2800, 4, "#e7e0d3"),
-      variant("p-001", 3, "Ink / M", 2800, 9, "#2b2f38"),
+      variant("p-001", 0, "Bone / S", 1800000, 12, "#e8e2d6"),
+      variant("p-001", 1, "Bone / M", 1800000, 18, "#e8e2d6"),
+      variant("p-001", 2, "Bone / L", 1800000, 4, "#e8e2d6"),
+      variant("p-001", 3, "Ink / M", 1800000, 9, "#2b3138"),
     ],
   },
   {
@@ -76,19 +61,19 @@ export const catalog: Product[] = [
     slug: "heavyweight-hoodie",
     category: "Apparel",
     priceAmount: 4500000,
-    imageUrl: null,
+    imageUrl: "/products/heavyweight-hoodie.jpg",
     description:
-      "Brushed loopback fleece with a double-layered hood and ribbed cuffs that keep their form.",
+      "A 480gsm loopback hoodie with a lined hood and a kangaroo pocket deep enough to actually use.",
     details: [
-      "420gsm brushed loopback cotton",
-      "Double-layered hood, no drawcords",
-      "Kangaroo pocket with hidden phone sleeve",
+      "80% cotton / 20% polyester, 480gsm",
+      "Double-layer hood, flat drawcords",
+      "Ribbed cuffs and hem",
     ],
     variants: [
-      variant("p-002", 0, "Slate / S", 7400, 7, "#4a5260"),
-      variant("p-002", 1, "Slate / M", 7400, 11, "#4a5260"),
-      variant("p-002", 2, "Slate / L", 7400, 0, "#4a5260"),
-      variant("p-002", 3, "Oat / M", 7400, 6, "#d9cdb8"),
+      variant("p-002", 0, "Slate / S", 4500000, 7, "#4a5560"),
+      variant("p-002", 1, "Slate / M", 4500000, 11, "#4a5560"),
+      variant("p-002", 2, "Slate / L", 4500000, 0, "#4a5560"),
+      variant("p-002", 3, "Oat / M", 4500000, 6, "#ddd3c2"),
     ],
   },
   {
@@ -97,17 +82,17 @@ export const catalog: Product[] = [
     slug: "canvas-tote-bag",
     category: "Accessories",
     priceAmount: 2000000,
-    imageUrl: null,
+    imageUrl: "/products/canvas-tote-bag.jpg",
     description:
-      "Sixteen-ounce natural canvas, reinforced handles, and an interior pocket sized for a laptop.",
+      "A 16oz cotton canvas tote with a reinforced base seam. Stands up on its own when it is not full.",
     details: [
-      "16oz natural cotton canvas",
-      "Interior pocket fits a 14in laptop",
-      "Boxed base with reinforced bar tacks",
+      "16oz cotton canvas",
+      "38 × 42cm, 10cm gusset",
+      "Boxed base, reinforced handles",
     ],
     variants: [
-      variant("p-003", 0, "Natural", 3200, 25, "#d8c9a8"),
-      variant("p-003", 1, "Black", 3200, 14, "#1c1c1e"),
+      variant("p-003", 0, "Natural", 2000000, 25, "#dcd3bf"),
+      variant("p-003", 1, "Black", 2000000, 14, "#26262a"),
     ],
   },
   {
@@ -116,7 +101,7 @@ export const catalog: Product[] = [
     slug: "ceramic-pour-over-mug",
     category: "Home",
     priceAmount: 1500000,
-    imageUrl: null,
+    imageUrl: "/products/ceramic-pour-over-mug.jpg",
     description:
       "Stoneware mug with a matte exterior and a glazed interior that resists staining.",
     details: [
@@ -136,17 +121,17 @@ export const catalog: Product[] = [
     slug: "linen-throw-blanket",
     category: "Home",
     priceAmount: 5500000,
-    imageUrl: null,
+    imageUrl: "/products/linen-throw-blanket.jpg",
     description:
-      "Washed European linen, breathable and softens with every use. Sized for a full bed.",
+      "A washed linen throw that starts crisp and softens with every wash. Sized for a sofa arm.",
     details: [
-      "100% washed European linen",
-      "130 x 180cm, blanket-stitched edge",
-      "Softens with every wash",
+      "100% European linen, 165gsm",
+      "130 × 180cm",
+      "Machine washable, tumble dry low",
     ],
     variants: [
-      variant("p-005", 0, "Fog", 8900, 5, "#b9bcbd"),
-      variant("p-005", 1, "Terracotta", 8900, 3, "#b5654a"),
+      variant("p-005", 0, "Fog", 5500000, 5, "#b6b8b3"),
+      variant("p-005", 1, "Terracotta", 5500000, 3, "#b5643f"),
     ],
   },
   {
@@ -155,17 +140,17 @@ export const catalog: Product[] = [
     slug: "leather-card-wallet",
     category: "Accessories",
     priceAmount: 3500000,
-    imageUrl: null,
+    imageUrl: "/products/leather-card-wallet.jpg",
     description:
-      "Full-grain vegetable-tanned leather, four slots, and a centre pocket for folded notes.",
+      "Four card slots and a centre pocket in full-grain vegetable-tanned leather that darkens with wear.",
     details: [
       "Full-grain vegetable-tanned leather",
-      "Four card slots plus centre cash pocket",
-      "Hand-burnished edges, no lining",
+      "Four card slots, one centre pocket",
+      "Hand-burnished edges",
     ],
     variants: [
-      variant("p-006", 0, "Tan", 5600, 20, "#a9743f"),
-      variant("p-006", 1, "Espresso", 5600, 13, "#4a342a"),
+      variant("p-006", 0, "Tan", 3500000, 20, "#a9713f"),
+      variant("p-006", 1, "Espresso", 3500000, 13, "#3d2b20"),
     ],
   },
   {
@@ -174,17 +159,17 @@ export const catalog: Product[] = [
     slug: "minimal-desk-lamp",
     category: "Home",
     priceAmount: 7000000,
-    imageUrl: null,
+    imageUrl: "/products/minimal-desk-lamp.jpg",
     description:
-      "Matte powder-coated base with a stepless dimmer and a warm, low-glare LED panel.",
+      "A weighted base and an arm that holds any angle you leave it in. Dimmable, warm to cool white.",
     details: [
-      "Powder-coated aluminium base",
-      "Stepless dimmer, 2700-4000K",
-      "Weighted base, no visible fixings",
+      "Powder-coated steel, marble base",
+      "2700K–5000K, stepless dimming",
+      "USB-C powered, cable included",
     ],
     variants: [
-      variant("p-007", 0, "Black", 11400, 9, "#232326"),
-      variant("p-007", 1, "White", 11400, 2, "#f1f1ef"),
+      variant("p-007", 0, "Black", 7000000, 9, "#1f2124"),
+      variant("p-007", 1, "White", 7000000, 2, "#f0eee9"),
     ],
   },
   {
@@ -193,76 +178,32 @@ export const catalog: Product[] = [
     slug: "merino-wool-socks",
     category: "Apparel",
     priceAmount: 1200000,
-    imageUrl: null,
+    imageUrl: "/products/merino-wool-socks.jpg",
     description:
-      "Temperature-regulating merino blend with a reinforced heel and a flat, seam-free toe.",
+      "Fine-gauge merino that regulates temperature and resists odour, cut to stay up without gripping.",
     details: [
-      "80% merino, 20% nylon",
-      "Reinforced heel and toe",
-      "Seam-free, 3-pack",
+      "80% merino wool / 20% nylon",
+      "Ribbed cuff, flat toe seam",
+      "Two pairs per order",
     ],
     variants: [
-      variant("p-008", 0, "Charcoal / M", 1800, 40, "#3a3d42"),
-      variant("p-008", 1, "Charcoal / L", 1800, 22, "#3a3d42"),
-      variant("p-008", 2, "Rust / M", 1800, 0, "#9a4f30"),
+      variant("p-008", 0, "Charcoal / M", 1200000, 40, "#3b3d40"),
+      variant("p-008", 1, "Charcoal / L", 1200000, 22, "#3b3d40"),
+      variant("p-008", 2, "Rust / M", 1200000, 0, "#9a4a2c"),
     ],
   },
 ];
 
-export const CATEGORIES: string[] = [...new Set(catalog.map((p) => p.category))].sort();
+export const CATEGORIES = ["Apparel", "Accessories", "Home"] as const;
 
 export function getProduct(idOrSlug: string): Product | undefined {
   return catalog.find((p) => p.id === idOrSlug || p.slug === idOrSlug);
 }
 
-export function getDefaultVariant(product: Product): Variant {
-  return product.variants[0];
-}
-
-export function findVariant(variantId: string): { product: Product; variant: Variant } | undefined {
-  for (const product of catalog) {
-    const found = product.variants.find((v) => v.id === variantId);
-    if (found) return { product, variant: found };
-  }
-  return undefined;
-}
-
-export type SortKey = "featured" | "price-asc" | "price-desc" | "name";
-
-export function queryCatalog({
-  q = "",
-  category = "all",
-  sort = "featured",
-}: {
+export function queryCatalog(args: {
   q?: string;
   category?: string;
-  sort?: SortKey;
+  sort?: import("@/lib/catalog-types").SortKey;
 }): Product[] {
-  const needle = q.trim().toLowerCase();
-
-  const filtered = catalog.filter((product) => {
-    if (category !== "all" && product.category !== category) return false;
-    if (!needle) return true;
-    return (
-      product.name.toLowerCase().includes(needle) ||
-      product.description.toLowerCase().includes(needle) ||
-      product.category.toLowerCase().includes(needle)
-    );
-  });
-
-  const sorted = [...filtered];
-  switch (sort) {
-    case "price-asc":
-      sorted.sort((a, b) => a.priceAmount - b.priceAmount);
-      break;
-    case "price-desc":
-      sorted.sort((a, b) => b.priceAmount - a.priceAmount);
-      break;
-    case "name":
-      sorted.sort((a, b) => a.name.localeCompare(b.name));
-      break;
-    default:
-      break;
-  }
-  return sorted;
+  return queryProductList(catalog, args);
 }

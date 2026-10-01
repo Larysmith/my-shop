@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useDemo } from "@/components/demo/DemoProvider";
-import { OrderStatusBadge } from "@/components/order/TrackOrderForm";
+import OrderStatusBadge from "@/components/order/OrderStatusBadge";
 import { formatPrice } from "@/lib/pricing";
 import { ORDER_STATUSES, type DemoEmail, type EmailTemplate, type OrderStatus } from "@/lib/demo/types";
 

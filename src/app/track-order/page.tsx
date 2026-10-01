@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import TrackOrderForm from "@/components/order/TrackOrderForm";
+import DemoTrackOrderForm from "@/components/order/DemoTrackOrderForm";
+import { DEMO_MODE } from "@/lib/demo/types";
 
 export const metadata: Metadata = {
   title: "Track your order",
@@ -23,7 +25,9 @@ export default function TrackOrderPage() {
 
       <div className="mt-8">
         <Suspense fallback={<p className="text-sm text-foreground/55">Loading…</p>}>
-          <TrackOrderForm />
+          {/* Two components rather than one branching on the flag inside: only the
+              demo form may call useDemo(), which throws without a DemoProvider. */}
+          {DEMO_MODE ? <DemoTrackOrderForm /> : <TrackOrderForm />}
         </Suspense>
       </div>
 

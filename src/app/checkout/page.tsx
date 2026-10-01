@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
+import DemoCheckoutForm from "@/components/checkout/DemoCheckoutForm";
 import { DEMO_MODE } from "@/lib/demo/types";
 
 export const metadata: Metadata = {
@@ -21,7 +22,10 @@ export default function CheckoutPage() {
       </header>
 
       <div className="mt-8">
-        <CheckoutForm />
+        {/* Chosen here rather than inside one form: DemoCheckoutForm calls
+            useDemo(), which throws unless DemoProvider is mounted, and it is only
+            mounted in demo mode. */}
+        {DEMO_MODE ? <DemoCheckoutForm /> : <CheckoutForm />}
       </div>
     </div>
   );

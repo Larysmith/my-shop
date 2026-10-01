@@ -90,7 +90,7 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 | `npm run email:probe:smtp` | Mailgun SMTP handshake, stopping at authentication. Reports why a send is refused |
 | `npm run auth:verify` | Full email+password path against live Supabase: sign up, confirm, sign in, clean up |
 | `npm run test:unit` | Node test runner over the email provider switch and retry policy |
-| `npm run test:e2e` | 19 Playwright tests: cart persistence + full demo journey |
+| `npm run test:e2e` | Playwright, run twice: the demo journey in demo mode, then the production-mode suite against a server booted with `NEXT_PUBLIC_DEMO_MODE=false`. Both modes run from this one command |
 | `npm run check:supabase` | Masked credential and connectivity probe |
 | `npm run db:schema` / `db:apply` / `db:verify` | Inspect, migrate, and verify the database |
 | `npm run db:catalog` | Print the live catalog shape and variants per product |

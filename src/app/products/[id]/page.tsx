@@ -2,23 +2,32 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ProductPurchasePanel from "@/components/product/ProductPurchasePanel";
-import ProductArt, { artForProduct } from "@/components/product/ProductArt";
-import { getDefaultVariant, getProduct, catalog } from "@/lib/catalog";
+import ProductImage from "@/components/product/ProductImage";
+import { getDefaultVariant } from "@/lib/catalog-types";
+import { loadCatalog, loadCatalogSlugs, loadProduct } from "@/lib/server/shop-catalog";
 import { formatPrice } from "@/lib/pricing";
 
 type ProductPageProps = {
   params: Promise<{ id: string }>;
 };
 
-export function generateStaticParams() {
-  return catalog.map((product) => ({ id: product.id }));
+/**
+ * Pre-render one page per product.
+ *
+ * In production the slugs come from the database, so a newly added product is
+ * server-rendered on first request rather than needing a rebuild. `dynamicParams`
+ * defaults to true, which is what makes that work.
+ */
+export async function generateStaticParams() {
+  const slugs = await loadCatalogSlugs();
+  return slugs.map((id) => ({ id }));
 }
 
 export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
   const { id } = await params;
-  const product = getProduct(id);
+  const product = await loadProduct(id);
 
   if (!product) {
     return { title: "Product not found" };
@@ -32,12 +41,15 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params;
-  const product = getProduct(id);
+  // Accepts a slug or a uuid, because the related-product links use the id and
+  // old links may still carry either.
+  const product = await loadProduct(id);
 
   if (!product) {
     notFound();
   }
 
+  const catalog = await loadCatalog();
   const related = catalog.filter((p) => p.id !== product.id).slice(0, 3);
 
   return (
@@ -80,9 +92,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
               className="group flex items-center gap-4 rounded-2xl border border-foreground/10 p-3 transition-colors hover:border-foreground/25"
             >
               <div className="relative size-16 shrink-0 overflow-hidden rounded-xl">
-                <ProductArt
-                  kind={artForProduct(item.slug)}
-                  swatch={getDefaultVariant(item).swatch}
+                {/* ProductImage so the thumbnail uses the catalog photo when there
+                    is one, instead of always falling back to generated art. */}
+                <ProductImage
+                  product={{
+                    id: item.id,
+                    name: item.name,
+                    slug: item.slug,
+                    imageUrl: item.imageUrl,
+                    swatch: getDefaultVariant(item).swatch,
+                  }}
                 />
               </div>
               <div className="min-w-0">

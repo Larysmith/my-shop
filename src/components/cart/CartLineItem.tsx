@@ -4,7 +4,7 @@ import { useCart } from "@/components/cart/useCart";
 import type { CartLine } from "@/lib/cart/types";
 import { formatPrice } from "@/lib/pricing";
 import { getDefaultVariant, getProduct } from "@/lib/catalog";
-import ProductArt, { artForProduct } from "@/components/product/ProductArt";
+import ProductImage from "@/components/product/ProductImage";
 import QuantityStepper from "@/components/product/QuantityStepper";
 
 type CartLineItemProps = {
@@ -25,7 +25,17 @@ export default function CartLineItem({ line }: CartLineItemProps) {
   return (
     <li className="flex gap-4 py-6 first:pt-0">
       <div className="relative size-20 shrink-0 overflow-hidden rounded-xl border border-foreground/10 sm:size-24">
-        <ProductArt kind={artForProduct(line.productId)} swatch={swatch} />
+        {/* Prefer the catalog photo; ProductImage falls back to the tinted
+            generated art when a product has no image. */}
+        <ProductImage
+          product={{
+            id: line.productId,
+            name: line.name,
+            slug: product?.slug,
+            imageUrl: product?.imageUrl ?? null,
+            swatch,
+          }}
+        />
       </div>
 
       <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

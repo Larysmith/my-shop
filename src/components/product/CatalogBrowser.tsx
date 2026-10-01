@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import ProductGrid from "@/components/product/ProductGrid";
-import { CATEGORIES, queryCatalog, type SortKey } from "@/lib/catalog";
+import { queryCatalog, type Product, type SortKey } from "@/lib/catalog-types";
 
 const SORTS: { value: SortKey; label: string }[] = [
   { value: "featured", label: "Featured" },
@@ -12,7 +12,19 @@ const SORTS: { value: SortKey; label: string }[] = [
   { value: "name", label: "Name A–Z" },
 ];
 
-export default function CatalogBrowser() {
+/**
+ * Filtering and sorting run on data the server already loaded, not on a fetch per
+ * keystroke. `products` and `categories` therefore come in as props: the browser
+ * never asks where they came from, so the same component works against the demo
+ * catalog and the Supabase catalog.
+ */
+export default function CatalogBrowser({
+  products,
+  categories,
+}: {
+  products: Product[];
+  categories: string[];
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -41,7 +53,7 @@ export default function CatalogBrowser() {
     router.replace(qs ? `/products?${qs}` : "/products", { scroll: false });
   }
 
-  const results = queryCatalog({ q, category, sort });
+  const results = queryCatalog(products, { q, category, sort });
 
   return (
     <div>
@@ -84,7 +96,7 @@ export default function CatalogBrowser() {
               className="h-11 appearance-none rounded-full border border-foreground/15 bg-background pr-9 pl-4 text-sm font-medium text-foreground focus:border-foreground/40 focus:outline-none"
             >
               <option value="all">All categories</option>
-              {CATEGORIES.map((item) => (
+              {categories.map((item) => (
                 <option key={item} value={item}>
                   {item}
                 </option>

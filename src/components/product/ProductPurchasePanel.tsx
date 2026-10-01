@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { formatPrice } from "@/lib/pricing";
 import { getDefaultVariant, type Product, type Variant } from "@/lib/catalog";
-import ProductArt, { artForProduct } from "./ProductArt";
+import ProductImage from "./ProductImage";
 import AddToCartButton from "./AddToCartButton";
 import QuantityStepper from "./QuantityStepper";
 
@@ -23,10 +23,19 @@ export default function ProductPurchasePanel({ product }: { product: Product }) 
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
       <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-foreground/10">
-        <ProductArt kind={artForProduct(product.slug)} swatch={selected.swatch} />
-        <span className="absolute bottom-3 left-0 right-0 text-center text-[10px] font-medium tracking-[0.18em] text-[#1c1c1e]/35">
-          {product.id.toUpperCase()}
-        </span>
+        {/* ProductImage, not ProductArt directly: when the catalog carries a photo
+            it renders that, and only falls back to the generated art (tinted with
+            the selected variant's swatch) when there is no photo. Rendering
+            ProductArt here directly ignored image_url entirely. */}
+        <ProductImage
+          product={{
+            id: product.id,
+            name: product.name,
+            slug: product.slug,
+            imageUrl: product.imageUrl,
+            swatch: selected.swatch,
+          }}
+        />
       </div>
 
       <div className="lg:pt-2">
