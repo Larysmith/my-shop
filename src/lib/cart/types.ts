@@ -1,7 +1,7 @@
 export type CartLine = {
   productId: string;
   name: string;
-  priceCents: number;
+  priceAmount: number;
   imageUrl: string | null;
   quantity: number;
   variantId?: string;

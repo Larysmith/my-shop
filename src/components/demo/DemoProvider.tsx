@@ -24,7 +24,7 @@ import {
   subscribe,
 } from "@/lib/demo/browser-store";
 import type { CartLine } from "@/lib/cart/types";
-import { computeTotals } from "@/lib/pricing";
+import { computeTotals, SHOP_CURRENCY } from "@/lib/pricing";
 
 const DEMO_USERS: DemoUser[] = [
   { id: "demo-user-nina", email: "nina@example.com", fullName: "Nina Alvarez", isAdmin: false },
@@ -125,24 +125,24 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         productName: line.name,
         variantTitle: line.variantTitle ?? "Default",
         sku: line.sku ?? `LS-${line.productId.slice(2)}-01`,
-        unitPriceCents: line.priceCents,
+        unitPriceAmount: line.priceAmount,
         quantity: line.quantity,
-        lineTotalCents: line.priceCents * line.quantity,
+        lineTotalAmount: line.priceAmount * line.quantity,
       }));
 
       // The real build re-prices inside the create_pending_order RPC. The demo
       // calls the same shared pricing module so the rule cannot diverge.
-      const { subtotalCents, shippingCents, totalCents } = computeTotals(input.lines);
+      const { subtotalAmount, shippingAmount, totalAmount } = computeTotals(input.lines);
 
       const order: DemoOrder = {
         orderNumber: generateOrderNumber(orders.map((o) => o.orderNumber)),
         userId: user?.id ?? null,
         email: input.email.trim().toLowerCase(),
         status: "paid",
-        subtotalCents,
-        shippingCents,
-        totalCents,
-        currency: "usd",
+        subtotalAmount,
+        shippingAmount,
+        totalAmount,
+        currency: SHOP_CURRENCY,
         shipping: input.shipping,
         items,
         events: [
@@ -150,7 +150,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
           {
             fromStatus: "pending_payment",
             toStatus: "paid",
-            actor: "stripe:checkout.session.completed",
+            actor: "paystack:charge.success",
             createdAt: now,
           },
         ],

@@ -90,7 +90,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   {item.name}
                 </p>
                 <p className="mt-0.5 text-sm tabular-nums text-foreground/60">
-                  {formatPrice(item.priceCents)}
+                  {formatPrice(item.priceAmount)}
                 </p>
               </div>
             </Link>

@@ -146,7 +146,7 @@ await call("anon cannot create_pending_order", {
     p_user_id: null,
     p_cart_hash: "x",
     p_lines: [{ variantId: "00000000-0000-0000-0000-000000000000", quantity: 1 }],
-    p_shipping_cents: 0,
+    p_shipping_amount: 0,
   },
   expect: deny,
 });

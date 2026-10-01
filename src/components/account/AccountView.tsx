@@ -39,7 +39,7 @@ export default function AccountView() {
 
   const spent = mine
     .filter((o) => o.status !== "canceled" && o.status !== "refunded")
-    .reduce((sum, o) => sum + o.totalCents, 0);
+    .reduce((sum, o) => sum + o.totalAmount, 0);
 
   return (
     <div className="space-y-8">
@@ -114,7 +114,7 @@ export default function AccountView() {
                   <span className="flex items-center gap-3">
                     <OrderStatusBadge status={order.status} />
                     <span className="text-sm font-semibold tabular-nums text-foreground">
-                      {formatPrice(order.totalCents)}
+                      {formatPrice(order.totalAmount)}
                     </span>
                   </span>
                 </Link>

@@ -6,7 +6,7 @@ import CartSummary from "./CartSummary";
 import { useCart } from "./useCart";
 
 export default function CartView() {
-  const { lines, itemCount, subtotalCents, shippingCents, totalCents, hydrated } =
+  const { lines, itemCount, subtotalAmount, shippingAmount, totalAmount, hydrated } =
     useCart();
 
   if (!hydrated) {
@@ -43,9 +43,9 @@ export default function CartView() {
       </ul>
 
       <CartSummary
-        subtotalCents={subtotalCents}
-        shippingCents={shippingCents}
-        totalCents={totalCents}
+        subtotalAmount={subtotalAmount}
+        shippingAmount={shippingAmount}
+        totalAmount={totalAmount}
         itemCount={itemCount}
       />
     </div>

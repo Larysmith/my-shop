@@ -9,7 +9,12 @@
     "lint": "eslint",
     "check:supabase": "node scripts/check-supabase.mjs",
     "check:email": "node scripts/check-email-provider.mjs",
+    "check:paystack": "node scripts/check-paystack.mjs",
     "email:test": "node --conditions=react-server scripts/send-test-email.mjs",
+    "email:smtp": "node scripts/configure-auth-smtp.mjs",
+    "email:smtp:verify": "node scripts/configure-auth-smtp.mjs --verify",
+    "email:probe:smtp": "node scripts/probe-mailgun-smtp.mjs",
+    "auth:verify": "node scripts/verify-password-auth.mjs",
     "db:apply": "node scripts/db-apply.mjs",
     "db:schema": "node scripts/db-schema.mjs",
     "db:verify": "node scripts/verify-rls.mjs",
@@ -26,8 +31,7 @@
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "server-only": "^0.0.1",
-    "stripe": "^23.0.0"
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

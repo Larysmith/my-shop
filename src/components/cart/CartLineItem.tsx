@@ -32,7 +32,7 @@ export default function CartLineItem({ line }: CartLineItemProps) {
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-foreground">{line.name}</p>
           <p className="mt-1 text-sm text-foreground/60">
-            {formatPrice(line.priceCents)} each
+            {formatPrice(line.priceAmount)} each
           </p>
           <button
             type="button"
@@ -49,7 +49,7 @@ export default function CartLineItem({ line }: CartLineItemProps) {
             onChange={(quantity) => setQuantity(line.productId, quantity)}
           />
           <p className="text-sm font-semibold tabular-nums text-foreground">
-            {formatPrice(line.priceCents * line.quantity)}
+            {formatPrice(line.priceAmount * line.quantity)}
           </p>
         </div>
       </div>

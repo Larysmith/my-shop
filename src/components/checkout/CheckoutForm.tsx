@@ -7,7 +7,7 @@ import { useCart } from "@/components/cart/useCart";
 import { useDemo } from "@/components/demo/DemoProvider";
 import { formatPrice } from "@/lib/pricing";
 import { DEMO_MODE, type DemoShipping } from "@/lib/demo/types";
-import { startStripeCheckout } from "@/app/checkout/actions";
+import { startPaystackCheckout } from "@/app/checkout/actions";
 
 type Field = keyof DemoShipping | "email" | "customerNotes";
 
@@ -16,7 +16,7 @@ const INPUT =
 const LABEL = "block text-sm font-medium text-foreground";
 
 export default function CheckoutForm() {
-  const { lines, subtotalCents, shippingCents, totalCents, clearCart } = useCart();
+  const { lines, subtotalAmount, shippingAmount, totalAmount, clearCart } = useCart();
   const { user, placeOrder } = useDemo();
   const router = useRouter();
 
@@ -85,9 +85,9 @@ export default function CheckoutForm() {
     }
 
     // Production: the Server Action re-prices from the database, records the
-    // pending order, and returns a hosted Checkout URL. The cart is cleared
-    // only once Stripe has accepted the session.
-    const result = await startStripeCheckout({
+    // pending order, and returns a hosted payment URL. The cart is cleared
+    // only once Paystack has accepted the transaction.
+    const result = await startPaystackCheckout({
       email: values.email,
       shipping,
       lines,
@@ -274,7 +274,7 @@ export default function CheckoutForm() {
                   <span className="text-xs text-foreground/50">× {line.quantity}</span>
                 </span>
                 <span className="shrink-0 tabular-nums text-foreground">
-                  {formatPrice(line.priceCents * line.quantity)}
+                  {formatPrice(line.priceAmount * line.quantity)}
                 </span>
               </li>
             ))}
@@ -283,17 +283,17 @@ export default function CheckoutForm() {
           <dl className="mt-5 space-y-2 border-t border-foreground/10 pt-4 text-sm">
             <div className="flex justify-between">
               <dt className="text-foreground/60">Subtotal</dt>
-              <dd className="tabular-nums text-foreground">{formatPrice(subtotalCents)}</dd>
+              <dd className="tabular-nums text-foreground">{formatPrice(subtotalAmount)}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-foreground/60">Shipping</dt>
               <dd className="tabular-nums text-foreground">
-                {shippingCents === 0 ? "Free" : formatPrice(shippingCents)}
+                {shippingAmount === 0 ? "Free" : formatPrice(shippingAmount)}
               </dd>
             </div>
             <div className="flex justify-between border-t border-foreground/10 pt-2 text-base font-semibold">
               <dt>Total</dt>
-              <dd className="tabular-nums">{formatPrice(totalCents)}</dd>
+              <dd className="tabular-nums">{formatPrice(totalAmount)}</dd>
             </div>
           </dl>
 
@@ -313,8 +313,8 @@ export default function CheckoutForm() {
 
           <p className="mt-3 text-center text-xs text-foreground/45">
             {DEMO_MODE
-              ? "Demo mode — no card is charged and no Stripe session is created."
-              : "You will be taken to Stripe to pay. Card details are never handled by this shop."}
+? "Demo mode — no card is charged and no payment transaction is created."
+        : "You will be taken to Paystack to pay. Card details are never handled by this shop."}
           </p>
         </div>
       </aside>

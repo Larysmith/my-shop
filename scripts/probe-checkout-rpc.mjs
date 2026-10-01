@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 // Exercises create_pending_order against the reseeded catalog using the
 // service role, then removes the rows it created. This is the one path that
 // was previously blocked by the placeholder catalog, so it is worth proving
-// the RPC accepts the new UUID variant ids and prices them in cents.
+// the RPC accepts the new UUID variant ids and prices them in kobo.
 //
 // Leaves the database exactly as it found it.
 
@@ -63,7 +63,7 @@ async function rpc(fn, body) {
 // Two variants of the same product, which must price individually.
 const variants = await (
   await fetch(
-    `${BASE}/rest/v1/product_variants?select=id,title,sku,price_cents,stock,products!inner(slug)&products.slug=eq.ceramic-pour-over-mug&order=position`,
+    `${BASE}/rest/v1/product_variants?select=id,title,sku,price_amount,stock,products!inner(slug)&products.slug=eq.ceramic-pour-over-mug&order=position`,
     { headers, signal: AbortSignal.timeout(20_000) },
   )
 ).json();
@@ -73,13 +73,13 @@ console.log("\ncreate_pending_order against the reseeded catalog\n");
 check("mug has 3 variants", variants.length === 3, `got ${variants.length}`);
 
 // The 450ml variant is the only one at a different price; the first two are
-// both 2400 (Chalk and Clay at 320ml).
+// both 1500000 kobo (Chalk and Clay at 320ml).
 const small = variants[0];
-const large = variants.find((v) => v.price_cents !== small.price_cents) ?? variants[2];
+const large = variants.find((v) => v.price_amount !== small.price_amount) ?? variants[2];
 check(
   "variants price individually",
-  small.price_cents === 2400 && large.price_cents === 2700,
-  `${small.price_cents} / ${large.price_cents}`,
+  small.price_amount === 1500000 && large.price_amount === 1700000,
+  `${small.price_amount} / ${large.price_amount}`,
 );
 
 const order = await rpc("create_pending_order", {
@@ -98,7 +98,7 @@ const order = await rpc("create_pending_order", {
     { variantId: small.id, quantity: 2 },
     { variantId: large.id, quantity: 1 },
   ],
-  p_shipping_cents: 500,
+  p_shipping_amount: 350000,
 });
 
 check("order created", Boolean(order?.id), order?.order_number);
@@ -108,22 +108,22 @@ check(
   order?.status,
 );
 
-// 2 x 2400 + 1 x 2700 = 7500, plus 500 shipping = 8000. If the cents bug were
-// still present this would be orders of magnitude larger.
+// 2 x 1500000 + 1 x 1700000 = 4700000, plus 350000 shipping = 5050000. If a
+// minor-units bug were still present this would be orders of magnitude different.
 check(
-  "subtotal priced in cents (7500)",
-  order?.subtotal_cents === 7500,
-  `got ${order?.subtotal_cents}`,
+  "subtotal priced in kobo (4700000)",
+  order?.subtotal_amount === 4700000,
+  `got ${order?.subtotal_amount}`,
 );
-check("shipping 500", order?.shipping_cents === 500, `got ${order?.shipping_cents}`);
+check("shipping 350000", order?.shipping_amount === 350000, `got ${order?.shipping_amount}`);
 check(
-  "total 8000",
-  order?.total_cents === 8000,
-  `got ${order?.total_cents}`,
+  "total 5050000",
+  order?.total_amount === 5050000,
+  `got ${order?.total_amount}`,
 );
 
 const items = await (
-  await fetch(`${BASE}/rest/v1/order_items?select=product_name,variant_title,sku,unit_price_cents,quantity,line_total_cents&order_id=eq.${order.id}`, {
+  await fetch(`${BASE}/rest/v1/order_items?select=product_name,variant_title,sku,unit_price_amount,quantity,line_total_amount&order_id=eq.${order.id}`, {
     headers,
     signal: AbortSignal.timeout(20_000),
   })
@@ -132,8 +132,8 @@ const items = await (
 check("2 order_items written", items.length === 2, `got ${items.length}`);
 check(
   "line totals correct",
-  items.every((i) => i.line_total_cents === i.unit_price_cents * i.quantity),
-  JSON.stringify(items.map((i) => `${i.sku}:${i.line_total_cents}`)),
+  items.every((i) => i.line_total_amount === i.unit_price_amount * i.quantity),
+  JSON.stringify(items.map((i) => `${i.sku}:${i.line_total_amount}`)),
 );
 
 // Stock must not move until payment is confirmed.

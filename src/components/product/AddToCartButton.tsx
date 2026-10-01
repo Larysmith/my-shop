@@ -36,7 +36,7 @@ export default function AddToCartButton({
       {
         productId: product.id,
         name: product.name,
-        priceCents: chosen.priceCents,
+        priceAmount: chosen.priceAmount,
         imageUrl: product.imageUrl,
         variantId: chosen.id,
         variantTitle: chosen.title,

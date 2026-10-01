@@ -45,7 +45,7 @@ export default function AdminOrdersView() {
 
   const revenue = sorted
     .filter((o) => o.status !== "canceled" && o.status !== "refunded")
-    .reduce((sum, o) => sum + o.totalCents, 0);
+    .reduce((sum, o) => sum + o.totalAmount, 0);
 
   return (
     <div>
@@ -152,7 +152,7 @@ export default function AdminOrdersView() {
                       })}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums text-foreground">
-                      {formatPrice(order.totalCents)}
+                      {formatPrice(order.totalAmount)}
                     </td>
                   </tr>
                 ))}

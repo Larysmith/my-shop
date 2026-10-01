@@ -11,7 +11,7 @@ export type EmailOrderItem = {
   variantTitle: string;
   sku: string;
   quantity: number;
-  lineTotalCents: number;
+  lineTotalAmount: number;
 };
 
 export type EmailShipping = {
@@ -27,9 +27,9 @@ export type EmailShipping = {
 export type EmailOrder = {
   orderNumber: string;
   email: string;
-  totalCents: number;
-  subtotalCents: number;
-  shippingCents: number;
+  totalAmount: number;
+  subtotalAmount: number;
+  shippingAmount: number;
   currency: string;
   shipping: EmailShipping;
   items: EmailOrderItem[];
@@ -72,17 +72,17 @@ function itemTable(order: EmailOrder): string {
     <span style="color:#666;font-size:12px">${escapeHtml(item.variantTitle)} &middot; ${escapeHtml(item.sku)} &times; ${quantity}</span>
   </td>
   <td style="padding:8px 12px;border-bottom:1px solid #e5e5e5;text-align:right;white-space:nowrap">
-    ${escapeHtml(formatPrice(item.lineTotalCents, order.currency.toUpperCase()))}
+    ${escapeHtml(formatPrice(item.lineTotalAmount, order.currency.toUpperCase()))}
   </td>
 </tr>`;
     })
     .join("\n");
 
-  const totalsRow = (label: string, cents: number, strong = false) =>
+  const totalsRow = (label: string, amount: number, strong = false) =>
     `<tr>
   <td style="padding:4px 0;${strong ? "font-weight:700" : "color:#444"}">${label}</td>
   <td style="padding:4px 0;text-align:right;white-space:nowrap;${strong ? "font-weight:700" : ""}">${escapeHtml(
-    formatPrice(cents, order.currency.toUpperCase()),
+    formatPrice(amount, order.currency.toUpperCase()),
   )}</td>
 </tr>`;
 
@@ -90,9 +90,9 @@ function itemTable(order: EmailOrder): string {
 ${rows}
 <tr><td colspan="2" style="padding-top:12px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
-    ${totalsRow("Subtotal", order.subtotalCents)}
-    ${totalsRow("Shipping", order.shippingCents)}
-    ${totalsRow("Total", order.totalCents, true)}
+    ${totalsRow("Subtotal", order.subtotalAmount)}
+    ${totalsRow("Shipping", order.shippingAmount)}
+    ${totalsRow("Total", order.totalAmount, true)}
   </table>
 </td></tr>
 </table>`;
@@ -101,14 +101,14 @@ ${rows}
 function itemsText(order: EmailOrder): string {
   const lines = order.items.map(
     (item) =>
-      `- ${item.productName} (${item.variantTitle}, SKU ${item.sku}) x${item.quantity} — ${formatPrice(item.lineTotalCents, order.currency.toUpperCase())}`,
+      `- ${item.productName} (${item.variantTitle}, SKU ${item.sku}) x${item.quantity} — ${formatPrice(item.lineTotalAmount, order.currency.toUpperCase())}`,
   );
   return [
     ...lines,
     "",
-    `Subtotal: ${formatPrice(order.subtotalCents, order.currency.toUpperCase())}`,
-    `Shipping: ${formatPrice(order.shippingCents, order.currency.toUpperCase())}`,
-    `Total: ${formatPrice(order.totalCents, order.currency.toUpperCase())}`,
+    `Subtotal: ${formatPrice(order.subtotalAmount, order.currency.toUpperCase())}`,
+    `Shipping: ${formatPrice(order.shippingAmount, order.currency.toUpperCase())}`,
+    `Total: ${formatPrice(order.totalAmount, order.currency.toUpperCase())}`,
   ].join("\n");
 }
 
@@ -201,13 +201,13 @@ export function renderEmail(
         subject: `New order ${order.orderNumber}`,
         html: wrap(
           `New order received`,
-          `<p style="margin:0 0 16px">${escapeHtml(order.orderNumber)} — ${escapeHtml(formatPrice(order.totalCents, order.currency.toUpperCase()))} — ${escapeHtml(order.email)}</p>
+          `<p style="margin:0 0 16px">${escapeHtml(order.orderNumber)} — ${escapeHtml(formatPrice(order.totalAmount, order.currency.toUpperCase()))} — ${escapeHtml(order.email)}</p>
            ${itemTable(order)}
            <p style="margin:24px 0 0;color:#444;font-size:14px"><strong>Ship to</strong><br />${address}</p>`,
         ),
         text: [
           `New order ${order.orderNumber}`,
-          `Total: ${formatPrice(order.totalCents, order.currency.toUpperCase())}`,
+          `Total: ${formatPrice(order.totalAmount, order.currency.toUpperCase())}`,
           `Customer: ${order.email}`,
           "",
           itemsText(order),

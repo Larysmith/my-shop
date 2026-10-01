@@ -16,7 +16,7 @@ export default function CheckoutPage() {
         <p className="mt-2 max-w-xl text-sm leading-6 text-foreground/60">
           {DEMO_MODE
             ? "Guest checkout. Enter any email — no payment is taken in demo mode."
-            : "Guest checkout is allowed. Payment is handled by Stripe."}
+            : "Guest checkout is allowed. Payment is handled by Paystack."}
         </p>
       </header>
 

@@ -19,7 +19,7 @@ export type SendOrderEmailResult = {
 /**
  * Renders an order email and hands it to the configured provider, then records
  * the attempt in `email_log` whatever the outcome. A delivery failure must never
- * throw into the caller's transaction — the caller is usually a Stripe webhook
+ * throw into the caller's transaction — the caller is usually a Paystack webhook
  * or an order status update, and losing that work because an email failed would
  * be worse than a missing email.
  */

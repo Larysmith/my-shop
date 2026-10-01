@@ -4,7 +4,7 @@ A small apparel-and-homegoods store built with Next.js 16 (App Router), React 19
 TypeScript and Tailwind v4.
 
 The app ships in **demo mode**: the entire shop runs in the browser with no backend, so you
-can click through every feature without Supabase, Stripe or an email provider being configured.
+can click through every feature without Supabase, Paystack or an email provider being configured.
 
 ```bash
 npm install
@@ -17,7 +17,7 @@ npm run dev      # http://localhost:3001
 
 1. **`/products`** — search, filter by category, sort. Open a product and pick a variant; the
    artwork, price and SKU change with it. Some variants are sold out and cannot be added.
-2. **Add to cart** — quantities, the free-shipping-over-$75 threshold and totals all come from
+2. **Add to cart** — quantities, the free-shipping-over-₦50,000 threshold and totals all come from
    one shared pricing module.
 3. **`/checkout`** — fill in any details, pay with the fake card button, and you land on a
    confirmed order with a real order number.
@@ -47,7 +47,7 @@ in `localStorage`, so clearing site data resets everything.
 | --- | --- | --- |
 | Catalog | `src/lib/catalog.ts` | `products` + `product_variants` — migrated, populated, RLS verified |
 | Cart, pricing, totals | Real | Same code |
-| Checkout | Simulated in `localStorage` | Stripe hosted Checkout + `create_pending_order` RPC |
+| Checkout | Simulated in `localStorage` | Paystack hosted checkout + `create_pending_order` RPC |
 | Orders | Simulated store | `orders` / `order_items` / `order_events` |
 | Email | Simulated log | Brevo or Mailgun via `EMAIL_PROVIDER`, through `src/lib/server/email/`, writing `email_log` |
 | Auth | Demo account picker | Google OAuth or email + password, via Supabase Auth (PKCE) |
@@ -86,6 +86,9 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 | `npx tsc --noEmit` | Typecheck |
 | `npm run check:email` | Email provider preflight: authenticates, checks the sending domain and recipients. Sends nothing |
 | `npm run email:test` | Sends one real test email through the configured transport |
+| `npm run email:smtp` / `email:smtp:verify` | Point Supabase Auth's mailer at Mailgun, or read the current config back |
+| `npm run email:probe:smtp` | Mailgun SMTP handshake, stopping at authentication. Reports why a send is refused |
+| `npm run auth:verify` | Full email+password path against live Supabase: sign up, confirm, sign in, clean up |
 | `npm run test:unit` | Node test runner over the email provider switch and retry policy |
 | `npm run test:e2e` | 19 Playwright tests: cart persistence + full demo journey |
 | `npm run check:supabase` | Masked credential and connectivity probe |
@@ -102,15 +105,25 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
   must be named `proxy`. It refreshes the Supabase session and guards `/account` and `/admin`.
 - **Checkout is publicly accessible**; only server-side service-role writes are permitted.
   There is no client write policy on `orders` at all.
-- **Shipping** is flat $5, free over $75, applied server-side as its own figure.
-- **Stripe** — hosted Checkout only; no client-side Stripe package, so card data never reaches
+- **Currency** is NGN, held as integer kobo. Amount fields are named `*_amount` rather than
+  `*_cents`, and the ISO code lives in an adjacent `currency` column, so no amount is ever read
+  without its currency. `formatPrice` picks the locale from the currency, not the amount.
+- **Shipping** is flat ₦3,500, free over ₦50,000, applied server-side as its own figure.
+- **Paystack** — hosted checkout only; no client-side Paystack package, so card data never reaches
   this app. `src/app/checkout/actions.ts` re-reads every variant and recomputes totals from
-  Postgres before creating a session, so a hand-edited `localStorage` cart cannot change what is
-  charged. `src/app/api/stripe/webhook/route.ts` verifies the signature against the raw body.
-- **Webhook idempotency** — Stripe delivers at least once. `fulfillPaidOrder` flips the status and
-  writes `stripe_event_id` in one conditional update, so a repeat delivery loses the race and
-  returns `already_applied` instead of decrementing stock twice. Stock is rebuilt from
-  `order_items`, never from the event payload.
+  Postgres before initializing a transaction, so a hand-edited `localStorage` cart cannot change
+  what is charged. `src/app/api/paystack/webhook/route.ts` verifies the signature against the raw
+  body before parsing it.
+- **The webhook is a notification, not proof of payment.** `charge.success` only names a reference;
+  the route then calls `verifyTransaction` and fulfills from that verified result. A card charge can
+  notify before it settles, so trusting the body would let an unsettled or spoofed event ship goods.
+- **Webhook idempotency** — Paystack retries. `fulfillPaidOrder` flips the status and writes
+  `paystack_reference` in one conditional update guarded by `is("paystack_reference", null)`, so a
+  repeat delivery loses the race and returns `already_applied` instead of decrementing stock twice.
+  A unique index on the reference backs that up. Stock is rebuilt from `order_items`, never from
+  the event payload.
+- **Amount mismatch is refused, not reconciled.** The charged amount is compared to the stored total
+  before anything is fulfilled, and a difference throws into a retryable 500 so it stays visible.
 - **Product images** are self-hosted in `public/products/`, not hotlinked. `npm run images:update`
   fetches the 1280px variant from Pixabay, verifies each one is really a JPEG above a size floor,
   and stores a local path such as `/products/merino-wool-socks.jpg`. Remote URLs were rejected
@@ -121,7 +134,7 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 - **Email** — `src/lib/server/email/` renders the four templates in `templates.ts` (HTML plus a
   plain-text alternative), posts them through the transport named by `EMAIL_PROVIDER`
   (`brevo.ts` or `mailgun.ts`), and records every attempt in `email_log` in `send.ts`. A delivery
-  failure is logged, not thrown: callers are Stripe webhooks and status transitions, which must
+  failure is logged, not thrown: callers are Paystack webhooks and status transitions, which must
   not roll back because the provider was down. `EMAIL_PROVIDER` accepts `brevo`, `mailgun`, or
   `none`; unset is a configuration error rather than a silent default, and `none` refuses to send
   while still writing the failed row so the gap stays auditable.
@@ -136,9 +149,33 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 Google OAuth, reading the catalog from Supabase, the admin fulfillment UI against live orders,
 real product photography, and deployment.
 
-Stripe and the email transport are wired. Mailgun has been verified live: credentials authenticate,
-the sandbox sending domain is active, and a test email was accepted. Stripe still needs a test
-`sk_test_` key plus `stripe listen --forward-to localhost:3001/api/stripe/webhook`.
+Paystack and the email transport are wired. Mailgun has been verified live: credentials
+authenticate, the sandbox sending domain is active, and a test email was accepted. Paystack still
+needs a test `sk_test_` secret key plus a webhook signing secret; locally, forward events with
+`paystack listen --forward-to localhost:3001/api/paystack/webhook`, since Paystack cannot reach
+`localhost` on its own. Migrations 0007 (Paystack) and 0008 (NGN) are written but not yet applied.
+
+### Auth email cannot use the Mailgun sandbox domain
+
+Supabase Auth's mailer was pointed at `smtp.mailgun.org:587`, and `site_url` was corrected from
+port 3000 to 3001. Sends still fail, for a reason that no credential change can fix: **Mailgun
+provisions no SMTP credentials for sandbox domains.** Its API returns an empty `smtp_login` for
+`sandbox*.mailgun.org`, and every `AUTH` attempt returns `535 Authentication failed` regardless of
+username or password. Supabase surfaces this only as the opaque "Error sending confirmation email".
+
+Two further Mailgun credential distinctions worth knowing, both confirmed against the API:
+- The private API key and the SMTP password are **separate secrets**. The API key authenticates the
+  REST API and is rejected by the SMTP relay.
+- A sandbox domain delivers over REST only to authorized, activated recipients — so it can never
+  serve Auth mail even if SMTP worked.
+
+`npm run email:smtp` therefore refuses to write this configuration and says why. After adding a
+custom domain to the Mailgun account, re-run `npm run email:smtp` to save the config and
+`npm run auth:verify` to exercise the whole path.
+
+Password sign-up, password sign-in and password reset are built and tested in code, but unusable
+end-to-end until a real sending domain exists. The reset flow is at `/forgot-password` and
+`/reset-password`.
 
 The active Mailgun domain is a **sandbox** (`sandbox*.mailgun.org`), which only delivers to
 authorized recipients who have clicked Mailgun's activation email — real customers will receive

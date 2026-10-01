@@ -33,9 +33,9 @@ export type DemoOrderItem = {
   productName: string;
   variantTitle: string;
   sku: string;
-  unitPriceCents: number;
+  unitPriceAmount: number;
   quantity: number;
-  lineTotalCents: number;
+  lineTotalAmount: number;
 };
 
 export type DemoOrderEvent = {
@@ -50,9 +50,9 @@ export type DemoOrder = {
   userId: string | null;
   email: string;
   status: OrderStatus;
-  subtotalCents: number;
-  shippingCents: number;
-  totalCents: number;
+  subtotalAmount: number;
+  shippingAmount: number;
+  totalAmount: number;
   currency: string;
   shipping: DemoShipping;
   items: DemoOrderItem[];

@@ -1,4 +1,9 @@
 import { findVariant } from "@/lib/catalog";
+import {
+  FREE_SHIPPING_THRESHOLD_AMOUNT,
+  SHOP_CURRENCY,
+  SHIPPING_FLAT_AMOUNT,
+} from "@/lib/pricing";
 import type { DemoEmail, DemoOrder, DemoOrderItem, OrderStatus } from "./types";
 import { DEMO_MERCHANT_EMAIL } from "./types";
 
@@ -24,9 +29,9 @@ function buildItems(lines: SeedLine[]): DemoOrderItem[] {
       productName: product.name,
       variantTitle: variant.title,
       sku: variant.sku,
-      unitPriceCents: variant.priceCents,
+      unitPriceAmount: variant.priceAmount,
       quantity,
-      lineTotalCents: variant.priceCents * quantity,
+      lineTotalAmount: variant.priceAmount * quantity,
     };
   });
 }
@@ -59,13 +64,14 @@ function buildOrder({
   line1?: string;
 }): DemoOrder {
   const items = buildItems(lines);
-  const subtotalCents = items.reduce((sum, i) => sum + i.lineTotalCents, 0);
-  const shippingCents = subtotalCents >= 7500 ? 0 : 500;
+  const subtotalAmount = items.reduce((sum, i) => sum + i.lineTotalAmount, 0);
+  const shippingAmount =
+    subtotalAmount >= FREE_SHIPPING_THRESHOLD_AMOUNT ? 0 : SHIPPING_FLAT_AMOUNT;
   const createdAt = iso(daysAgo);
 
   const trail: { to: OrderStatus; actor: string; at: string }[] = [
     { to: "pending_payment", actor: "checkout", at: createdAt },
-    { to: "paid", actor: "stripe:checkout.session.completed", at: createdAt },
+    { to: "paid", actor: "paystack:charge.success", at: createdAt },
   ];
   if (status === "shipped" || status === "completed") {
     trail.push({ to: "shipped", actor: "admin", at: iso(daysAgo - 1, 15) });
@@ -79,10 +85,10 @@ function buildOrder({
     userId,
     email,
     status,
-    subtotalCents,
-    shippingCents,
-    totalCents: subtotalCents + shippingCents,
-    currency: "usd",
+    subtotalAmount,
+    shippingAmount,
+    totalAmount: subtotalAmount + shippingAmount,
+    currency: SHOP_CURRENCY,
     shipping: { name, line1, city, region, postalCode, country },
     items,
     events: trail.slice(0, trail.findIndex((t) => t.to === status) + 1).map((t, i, arr) => ({

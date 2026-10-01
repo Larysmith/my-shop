@@ -15,7 +15,7 @@ import { computeTotals } from "@/lib/pricing";
 export type AddableProduct = {
   productId: string;
   name: string;
-  priceCents: number;
+  priceAmount: number;
   imageUrl: string | null;
   variantId?: string;
   variantTitle?: string;
@@ -100,9 +100,9 @@ function reducer(state: CartState, action: CartAction): CartState {
 export type CartContextValue = {
   lines: CartLine[];
   itemCount: number;
-  subtotalCents: number;
-  shippingCents: number;
-  totalCents: number;
+  subtotalAmount: number;
+  shippingAmount: number;
+  totalAmount: number;
   hydrated: boolean;
   addItem: (item: AddableProduct, quantity?: number) => void;
   setQuantity: (productId: string, quantity: number) => void;

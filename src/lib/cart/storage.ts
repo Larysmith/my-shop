@@ -11,7 +11,7 @@ function isCartLine(value: unknown): value is CartLine {
   return (
     typeof line.productId === "string" &&
     typeof line.name === "string" &&
-    typeof line.priceCents === "number" &&
+    typeof line.priceAmount === "number" &&
     typeof line.quantity === "number" &&
     line.quantity > 0 &&
     (typeof line.imageUrl === "string" || line.imageUrl === null)

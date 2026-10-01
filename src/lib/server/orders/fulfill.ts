@@ -8,9 +8,9 @@ type OrderRow = {
   order_number: string;
   email: string;
   status: string;
-  subtotal_cents: number;
-  shipping_cents: number;
-  total_cents: number;
+  subtotal_amount: number;
+  shipping_amount: number;
+  total_amount: number;
   currency: string;
   shipping_name: string;
   shipping_line1: string;
@@ -27,41 +27,52 @@ type OrderItemRow = {
   variant_title: string;
   sku: string;
   quantity: number;
-  line_total_cents: number;
+  line_total_amount: number;
 };
 
-export type OrderIdempotencyEvent =
-  | "checkout.session.completed"
-  | "checkout.session.async_payment_succeeded"
-  | "checkout.session.async_payment_failed";
-
 export type FulfillResult = {
-  status: "fulfilled" | "already_applied" | "not_found";
+  status: "fulfilled" | "already_applied" | "not_found" | "payment_failed";
   orderNumber: string | null;
 };
 
 /**
  * Marks a paid order, releases stock, and fires the customer and owner emails.
  *
- * Stripe retries webhooks and delivers them at least once, so this must be
- * safe to run twice. The unique index on `orders.stripe_event_id` is the real
- * guard: the status flip and the event id land in one update, so a concurrent
- * or repeated delivery loses the race and is reported as already applied rather
- * than decrementing stock a second time.
+ * Paystack retries webhooks and may deliver the same event more than once, so
+ * this must be safe to run twice. The unique index on `orders.paystack_reference`
+ * is the real guard: the status flip and the reference land in one update, so a
+ * repeated or concurrent delivery loses the race and is reported as already
+ * applied rather than decrementing stock a second time.
+ *
+ * `amount` is what Paystack says it charged. It is compared against the stored
+ * total before anything is fulfilled, because a mismatch means the customer paid
+ * a different amount than this shop recorded — crediting that order would ship
+ * goods for the wrong money.
  */
 export async function fulfillPaidOrder(input: {
-  eventId: string;
-  sessionId: string;
-  orderNumber: string;
-  event: OrderIdempotencyEvent;
+  reference: string;
+  /**
+   * Optional second key for the lookup. The Paystack webhook only carries the
+   * reference, so this stays undefined there; a manual reconciliation call may
+   * pass the order number when the reference is unknown.
+   */
+  orderNumber?: string;
+  paid: boolean;
+  chargedAmount: number;
 }): Promise<FulfillResult> {
-  const { eventId, sessionId, orderNumber, event } = input;
+  const { reference, orderNumber, paid, chargedAmount } = input;
   const supabase = createAdminClient();
+
+  // PostgREST `.or()` takes a comma-separated filter list, so only the keys we
+  // actually have are included. An empty `order_number.eq.` would match nothing
+  // and could mask a real reference match.
+  const filters = [`paystack_reference.eq.${reference}`];
+  if (orderNumber) filters.push(`order_number.eq.${orderNumber}`);
 
   const { data: existing, error: lookupError } = await supabase
     .from("orders")
-    .select("id, order_number, status, stripe_event_id")
-    .or(`stripe_checkout_session_id.eq.${sessionId},order_number.eq.${orderNumber}`)
+    .select("id, order_number, status, total_amount, currency, paystack_reference")
+    .or(filters.join(","))
     .maybeSingle();
 
   if (lookupError) {
@@ -72,16 +83,39 @@ export async function fulfillPaidOrder(input: {
     return { status: "not_found", orderNumber: null };
   }
 
-  const order = existing as { id: string; order_number: string; status: string };
+  const order = existing as {
+    id: string;
+    order_number: string;
+    status: string;
+    total_amount: number;
+    currency: string;
+    paystack_reference: string | null;
+  };
 
   if (order.status === "paid" || order.status === "shipped" || order.status === "completed") {
     return { status: "already_applied", orderNumber: order.order_number };
   }
 
-  if (event === "checkout.session.async_payment_failed") {
-    // Stock is not released here on purpose. The variant rows stay untouched
-    // until an explicit refund or cancellation decision is made.
-    return { status: "already_applied", orderNumber: order.order_number };
+  if (!paid) {
+    // A failed or abandoned charge leaves the order pending. Stock is not
+    // released here on purpose: the variant rows stay untouched until an
+    // explicit refund or cancellation decision is made.
+    return { status: "payment_failed", orderNumber: order.order_number };
+  }
+
+  if (!Number.isInteger(chargedAmount)) {
+    // Guards the comparison below. A float would fail equality against an
+    // integer total anyway, but the message would be misleading.
+    throw new Error(
+      `Paystack reported a non-integer charged amount for ${order.order_number}: ${chargedAmount}.`,
+    );
+  }
+
+  if (order.total_amount !== chargedAmount) {
+    throw new Error(
+      `Amount mismatch for ${order.order_number}: Paystack charged ${chargedAmount} ` +
+        `${order.currency} but the order totals ${order.total_amount}. Refusing to fulfill.`,
+    );
   }
 
   const { data: claimed, error: claimError } = await supabase
@@ -89,19 +123,19 @@ export async function fulfillPaidOrder(input: {
     .update({
       status: "paid",
       paid_at: new Date().toISOString(),
-      stripe_checkout_session_id: sessionId,
-      stripe_event_id: eventId,
+      paystack_reference: reference,
       updated_at: new Date().toISOString(),
     })
     .eq("id", order.id)
-    .is("stripe_event_id", null)
+    // The claim condition: no reference has been recorded yet. A repeated
+    // delivery matches nothing and is reported as already applied.
+    .is("paystack_reference", null)
     .select("id");
 
   if (claimError) {
     throw new Error(`Could not mark order paid: ${claimError.message}`);
   }
 
-  // No row came back means a concurrent delivery already claimed this order.
   if (!claimed || claimed.length === 0) {
     return { status: "already_applied", orderNumber: order.order_number };
   }
@@ -111,7 +145,7 @@ export async function fulfillPaidOrder(input: {
     orderId: order.id,
     from: "pending_payment",
     to: "paid",
-    actor: "stripe",
+    actor: "paystack",
   });
 
   await releaseStock(supabase, order.id);
@@ -142,9 +176,9 @@ async function recordEvent(input: {
 }
 
 /**
- * Rebuilds the line list from stored order_items, never from the event payload.
- * The event carries Stripe's view of the cart; `order_items` is what this shop
- * priced and recorded at checkout time.
+ * Rebuilds the line list from stored order_items, never from the webhook body.
+ * The event carries Paystack's view of the payment; `order_items` is what this
+ * shop priced and recorded at checkout time.
  */
 async function releaseStock(
   supabase: SupabaseLike,
@@ -183,7 +217,7 @@ async function sendEmails(orderId: string): Promise<void> {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, order_number, email, status, subtotal_cents, shipping_cents, total_cents, currency, shipping_name, shipping_line1, shipping_line2, shipping_city, shipping_region, shipping_postal_code, shipping_country, user_id, order_items (product_name, variant_title, sku, quantity, line_total_cents)",
+      "id, order_number, email, status, subtotal_amount, shipping_amount, total_amount, currency, shipping_name, shipping_line1, shipping_line2, shipping_city, shipping_region, shipping_postal_code, shipping_country, user_id, order_items (product_name, variant_title, sku, quantity, line_total_amount)",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -198,9 +232,9 @@ async function sendEmails(orderId: string): Promise<void> {
   const order = {
     orderNumber: row.order_number,
     email: row.email,
-    totalCents: row.total_cents,
-    subtotalCents: row.subtotal_cents,
-    shippingCents: row.shipping_cents,
+    totalAmount: row.total_amount,
+    subtotalAmount: row.subtotal_amount,
+    shippingAmount: row.shipping_amount,
     currency: row.currency,
     trackingNumber: null,
     shipping: {
@@ -217,7 +251,7 @@ async function sendEmails(orderId: string): Promise<void> {
       variantTitle: item.variant_title,
       sku: item.sku,
       quantity: item.quantity,
-      lineTotalCents: item.line_total_cents,
+      lineTotalAmount: item.line_total_amount,
     })),
   };
 

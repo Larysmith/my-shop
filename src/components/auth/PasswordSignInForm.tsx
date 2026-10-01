@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -100,6 +101,17 @@ export default function PasswordSignInForm() {
           {error}
         </p>
       )}
+
+      <div className="flex justify-end">
+        {/* Without this, anyone who forgets their password is locked out
+            permanently — email/password sign-in is unusable without it. */}
+        <Link
+          href="/forgot-password"
+          className="text-xs font-medium text-foreground/55 underline underline-offset-4 hover:text-foreground"
+        >
+          Forgot password?
+        </Link>
+      </div>
 
       <button
         type="submit"

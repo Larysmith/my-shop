@@ -40,7 +40,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         </p>
         <div className="mt-auto flex items-center justify-between gap-3 pt-3">
           <span className="text-base font-semibold tabular-nums text-foreground">
-            {formatPrice(product.priceCents)}
+            {formatPrice(product.priceAmount)}
           </span>
           {isSoldOut ? (
             <span className="rounded-full bg-foreground/8 px-2.5 py-1 text-[11px] font-medium text-foreground/55">

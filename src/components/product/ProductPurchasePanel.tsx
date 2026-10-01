@@ -18,7 +18,7 @@ export default function ProductPurchasePanel({ product }: { product: Product }) 
 
   const soldOut = selected.stock === 0;
   const maxQuantity = Math.min(selected.stock, 10);
-  const cheapest = Math.min(...product.variants.map((v) => v.priceCents));
+  const cheapest = Math.min(...product.variants.map((v) => v.priceAmount));
 
   return (
     <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
@@ -79,7 +79,7 @@ export default function ProductPurchasePanel({ product }: { product: Product }) 
 
         <div className="mt-5 flex items-baseline gap-3">
           <p className="text-lg font-semibold tabular-nums text-foreground">
-            {formatPrice(selected.priceCents)}
+            {formatPrice(selected.priceAmount)}
           </p>
           <p className="text-xs text-foreground/50">
             SKU {selected.sku} ·{" "}

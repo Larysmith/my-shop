@@ -104,7 +104,7 @@ export default function OrderDetail({
         <div className="text-right">
           <OrderStatusBadge status={order.status} />
           <p className="mt-1.5 text-lg font-semibold tabular-nums text-foreground">
-            {formatPrice(order.totalCents)}
+            {formatPrice(order.totalAmount)}
           </p>
         </div>
       </header>
@@ -127,7 +127,7 @@ export default function OrderDetail({
                   </span>
                 </span>
                 <span className="shrink-0 tabular-nums text-foreground">
-                  {formatPrice(item.lineTotalCents)}
+                  {formatPrice(item.lineTotalAmount)}
                 </span>
               </li>
             ))}
@@ -135,17 +135,17 @@ export default function OrderDetail({
           <dl className="mt-4 space-y-1.5 border-t border-foreground/10 pt-3 text-sm">
             <div className="flex justify-between">
               <dt className="text-foreground/60">Subtotal</dt>
-              <dd className="tabular-nums">{formatPrice(order.subtotalCents)}</dd>
+              <dd className="tabular-nums">{formatPrice(order.subtotalAmount)}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-foreground/60">Shipping</dt>
               <dd className="tabular-nums">
-                {order.shippingCents === 0 ? "Free" : formatPrice(order.shippingCents)}
+                {order.shippingAmount === 0 ? "Free" : formatPrice(order.shippingAmount)}
               </dd>
             </div>
             <div className="flex justify-between font-semibold">
               <dt>Total</dt>
-              <dd className="tabular-nums">{formatPrice(order.totalCents)}</dd>
+              <dd className="tabular-nums">{formatPrice(order.totalAmount)}</dd>
             </div>
           </dl>
         </section>

@@ -1,8 +1,11 @@
 // Demo catalog. Stands in for the Supabase `products` + `product_variants`
-// tables, which the migration has not applied yet. Every variant carries its own
-// price and stock, mirroring the eventual one-Stripe-Price-per-variant model.
+// tables, so the showcase runs with no backend. Every variant carries its own
+// price and stock, mirroring how the live catalog is stored.
 //
-// `priceCents` on a product is the price of its default variant, kept so the
+// Prices are minor units of the shop currency (NGN kobo) and match the values
+// that migration 0008 writes to `product_variants`, so demo and live look the same.
+//
+// `priceAmount` on a product is the price of its default variant, kept so the
 // existing card, grid and cart code can keep treating a product as a single
 // priced thing.
 
@@ -10,7 +13,7 @@ export type Variant = {
   id: string;
   title: string;
   sku: string;
-  priceCents: number;
+  priceAmount: number;
   stock: number;
   swatch: string;
 };
@@ -20,7 +23,7 @@ export type Product = {
   name: string;
   slug: string;
   category: string;
-  priceCents: number;
+  priceAmount: number;
   imageUrl: string | null;
   description: string;
   details: string[];
@@ -31,7 +34,7 @@ function variant(
   productId: string,
   index: number,
   title: string,
-  priceCents: number,
+  priceAmount: number,
   stock: number,
   swatch: string,
 ): Variant {
@@ -39,7 +42,7 @@ function variant(
     id: `${productId}-v${index + 1}`,
     title,
     sku: `LS-${productId.slice(2)}-${String(index + 1).padStart(2, "0")}`,
-    priceCents,
+    priceAmount,
     stock,
     swatch,
   };
@@ -51,7 +54,7 @@ export const catalog: Product[] = [
     name: "Everyday Cotton Tee",
     slug: "everyday-cotton-tee",
     category: "Apparel",
-    priceCents: 2800,
+    priceAmount: 1800000,
     imageUrl: null,
     description:
       "A 180gsm combed cotton tee with a relaxed fit that holds its shape wash after wash.",
@@ -72,7 +75,7 @@ export const catalog: Product[] = [
     name: "Heavyweight Hoodie",
     slug: "heavyweight-hoodie",
     category: "Apparel",
-    priceCents: 7400,
+    priceAmount: 4500000,
     imageUrl: null,
     description:
       "Brushed loopback fleece with a double-layered hood and ribbed cuffs that keep their form.",
@@ -93,7 +96,7 @@ export const catalog: Product[] = [
     name: "Canvas Tote Bag",
     slug: "canvas-tote-bag",
     category: "Accessories",
-    priceCents: 3200,
+    priceAmount: 2000000,
     imageUrl: null,
     description:
       "Sixteen-ounce natural canvas, reinforced handles, and an interior pocket sized for a laptop.",
@@ -112,7 +115,7 @@ export const catalog: Product[] = [
     name: "Ceramic Pour-Over Mug",
     slug: "ceramic-pour-over-mug",
     category: "Home",
-    priceCents: 2400,
+    priceAmount: 1500000,
     imageUrl: null,
     description:
       "Stoneware mug with a matte exterior and a glazed interior that resists staining.",
@@ -122,9 +125,9 @@ export const catalog: Product[] = [
       "Dishwasher and microwave safe",
     ],
     variants: [
-      variant("p-004", 0, "Chalk / 320ml", 2400, 30, "#eceae4"),
-      variant("p-004", 1, "Clay / 320ml", 2400, 16, "#b5765a"),
-      variant("p-004", 2, "Chalk / 450ml", 2700, 8, "#eceae4"),
+      variant("p-004", 0, "Chalk / 320ml", 1500000, 30, "#eceae4"),
+      variant("p-004", 1, "Clay / 320ml", 1500000, 16, "#b5765a"),
+      variant("p-004", 2, "Chalk / 450ml", 1700000, 8, "#eceae4"),
     ],
   },
   {
@@ -132,7 +135,7 @@ export const catalog: Product[] = [
     name: "Linen Throw Blanket",
     slug: "linen-throw-blanket",
     category: "Home",
-    priceCents: 8900,
+    priceAmount: 5500000,
     imageUrl: null,
     description:
       "Washed European linen, breathable and softens with every use. Sized for a full bed.",
@@ -151,7 +154,7 @@ export const catalog: Product[] = [
     name: "Leather Card Wallet",
     slug: "leather-card-wallet",
     category: "Accessories",
-    priceCents: 5600,
+    priceAmount: 3500000,
     imageUrl: null,
     description:
       "Full-grain vegetable-tanned leather, four slots, and a centre pocket for folded notes.",
@@ -170,7 +173,7 @@ export const catalog: Product[] = [
     name: "Minimal Desk Lamp",
     slug: "minimal-desk-lamp",
     category: "Home",
-    priceCents: 11400,
+    priceAmount: 7000000,
     imageUrl: null,
     description:
       "Matte powder-coated base with a stepless dimmer and a warm, low-glare LED panel.",
@@ -189,7 +192,7 @@ export const catalog: Product[] = [
     name: "Merino Wool Socks",
     slug: "merino-wool-socks",
     category: "Apparel",
-    priceCents: 1800,
+    priceAmount: 1200000,
     imageUrl: null,
     description:
       "Temperature-regulating merino blend with a reinforced heel and a flat, seam-free toe.",
@@ -250,10 +253,10 @@ export function queryCatalog({
   const sorted = [...filtered];
   switch (sort) {
     case "price-asc":
-      sorted.sort((a, b) => a.priceCents - b.priceCents);
+      sorted.sort((a, b) => a.priceAmount - b.priceAmount);
       break;
     case "price-desc":
-      sorted.sort((a, b) => b.priceCents - a.priceCents);
+      sorted.sort((a, b) => b.priceAmount - a.priceAmount);
       break;
     case "name":
       sorted.sort((a, b) => a.name.localeCompare(b.name));

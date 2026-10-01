@@ -45,7 +45,7 @@ const products = await (
 
 const variants = await (
   await fetch(
-    `${base}/rest/v1/product_variants?select=id,product_id,title,sku,price_cents,stock,is_default,is_active,position&order=position`,
+    `${base}/rest/v1/product_variants?select=id,product_id,title,sku,price_amount,stock,is_default,is_active,position&order=position`,
     { headers, signal: AbortSignal.timeout(20_000) },
   )
 ).json();
@@ -80,7 +80,7 @@ console.log(
 );
     for (const variant of own) {
       console.log(
-        `      ${variant.title.padEnd(14)} ${variant.sku.padEnd(18)} ${String(variant.price_cents).padStart(6)}  stock=${variant.stock} default=${variant.is_default} active=${variant.is_active}`,
+        `      ${variant.title.padEnd(14)} ${variant.sku.padEnd(18)} ${String(variant.price_amount).padStart(6)}  stock=${variant.stock} default=${variant.is_default} active=${variant.is_active}`,
       );
     }
   }

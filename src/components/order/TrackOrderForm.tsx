@@ -119,7 +119,7 @@ export default function TrackOrderForm() {
             <div className="text-right">
               <OrderStatusBadge status={result.status} />
               <p className="mt-1.5 text-sm font-semibold tabular-nums text-foreground">
-                {formatPrice(result.totalCents)}
+                {formatPrice(result.totalAmount)}
               </p>
             </div>
           </header>
@@ -134,7 +134,7 @@ export default function TrackOrderForm() {
                   </span>
                 </span>
                 <span className="shrink-0 tabular-nums text-foreground">
-                  {formatPrice(item.lineTotalCents)}
+                  {formatPrice(item.lineTotalAmount)}
                 </span>
               </li>
             ))}

@@ -1,23 +1,23 @@
 import Link from "next/link";
 import {
-  FREE_SHIPPING_THRESHOLD_CENTS,
+  FREE_SHIPPING_THRESHOLD_AMOUNT,
   formatPrice,
 } from "@/lib/pricing";
 
 type CartSummaryProps = {
-  subtotalCents: number;
-  shippingCents: number;
-  totalCents: number;
+  subtotalAmount: number;
+  shippingAmount: number;
+  totalAmount: number;
   itemCount: number;
 };
 
 export default function CartSummary({
-  subtotalCents,
-  shippingCents,
-  totalCents,
+  subtotalAmount,
+  shippingAmount,
+  totalAmount,
   itemCount,
 }: CartSummaryProps) {
-  const remainingCents = FREE_SHIPPING_THRESHOLD_CENTS - subtotalCents;
+  const remainingAmount = FREE_SHIPPING_THRESHOLD_AMOUNT - subtotalAmount;
 
   return (
     <div className="rounded-2xl border border-foreground/10 p-6 lg:sticky lg:top-24">
@@ -29,26 +29,26 @@ export default function CartSummary({
             Subtotal{itemCount > 0 && ` (${itemCount} item${itemCount === 1 ? "" : "s"})`}
           </dt>
           <dd className="font-medium tabular-nums text-foreground">
-            {formatPrice(subtotalCents)}
+            {formatPrice(subtotalAmount)}
           </dd>
         </div>
         <div className="flex justify-between gap-4">
           <dt className="text-foreground/60">Shipping</dt>
           <dd className="font-medium tabular-nums text-foreground">
-            {shippingCents === 0 ? "Free" : formatPrice(shippingCents)}
+            {shippingAmount === 0 ? "Free" : formatPrice(shippingAmount)}
           </dd>
         </div>
         <div className="flex justify-between gap-4 border-t border-foreground/10 pt-3">
           <dt className="font-semibold text-foreground">Total</dt>
           <dd className="font-semibold tabular-nums text-foreground">
-            {formatPrice(totalCents)}
+            {formatPrice(totalAmount)}
           </dd>
         </div>
       </dl>
 
-      {remainingCents > 0 && (
+      {remainingAmount > 0 && (
         <p className="mt-4 rounded-lg bg-foreground/5 px-3 py-2 text-xs text-foreground/70">
-          Add {formatPrice(remainingCents)} more for free shipping.
+          Add {formatPrice(remainingAmount)} more for free shipping.
         </p>
       )}
 

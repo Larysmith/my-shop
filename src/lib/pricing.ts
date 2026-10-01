@@ -1,32 +1,55 @@
-export function formatPrice(cents: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
+/**
+ * Money handling for the shop.
+ *
+ * Amounts are integer **minor units** — kobo for NGN, cents for USD — because that
+ * is what Paystack charges in and what the database stores. No amount in this
+ * codebase is ever a float, so no rounding error can accumulate in a total.
+ *
+ * The ISO code travels alongside every amount in `currency`; it is never inferred
+ * from the amount itself.
+ */
+export const SHOP_CURRENCY = "NGN";
+
+/**
+ * Renders a minor-unit amount.
+ *
+ * The locale is tied to the currency so the symbol and separators read naturally
+ * for the market: NGN formatted with an en-US locale renders "NGN 45,000.00"
+ * rather than "₦45,000.00", which is not what a Nigerian shopper expects to see.
+ */
+export function formatPrice(amount: number, currency: string = SHOP_CURRENCY): string {
+  const locale = currency === "NGN" ? "en-NG" : "en-US";
+
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 2,
-  }).format(cents / 100);
+  }).format(amount / 100);
 }
 
-export const SHIPPING_FLAT_CENTS = 500;
-export const FREE_SHIPPING_THRESHOLD_CENTS = 7500;
+// ₦3,500 flat below the free-shipping threshold.
+export const SHIPPING_FLAT_AMOUNT = 350_000;
+// Free at ₦50,000 and above.
+export const FREE_SHIPPING_THRESHOLD_AMOUNT = 5_000_000;
 
 export type PricedLine = {
-  priceCents: number;
+  priceAmount: number;
   quantity: number;
 };
 
 export function computeTotals(lines: PricedLine[]) {
-  const subtotalCents = lines.reduce(
-    (total, line) => total + line.priceCents * line.quantity,
+  const subtotalAmount = lines.reduce(
+    (total, line) => total + line.priceAmount * line.quantity,
     0,
   );
-  const shippingCents =
-    subtotalCents === 0 || subtotalCents >= FREE_SHIPPING_THRESHOLD_CENTS
+  const shippingAmount =
+    subtotalAmount === 0 || subtotalAmount >= FREE_SHIPPING_THRESHOLD_AMOUNT
       ? 0
-      : SHIPPING_FLAT_CENTS;
+      : SHIPPING_FLAT_AMOUNT;
 
   return {
-    subtotalCents,
-    shippingCents,
-    totalCents: subtotalCents + shippingCents,
+    subtotalAmount,
+    shippingAmount,
+    totalAmount: subtotalAmount + shippingAmount,
   };
 }

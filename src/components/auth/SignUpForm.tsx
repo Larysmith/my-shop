@@ -4,19 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { PASSWORD_HINT, PASSWORD_MIN_LENGTH } from "@/lib/auth/password";
 
 const INPUT =
   "h-11 w-full rounded-xl border border-foreground/15 bg-background px-3.5 text-sm text-foreground placeholder:text-foreground/35 focus:border-foreground/40 focus:outline-none";
-
-/**
- * The Supabase project's `password_min_length`, read from its auth config.
- *
- * The UI must not be stricter than the server: a form that rejects a 7-character
- * password the server would have accepted looks broken. Raising the real minimum
- * is a security decision made in the Supabase dashboard, so this constant should
- * be updated alongside it rather than guessed at.
- */
-const PASSWORD_MIN_LENGTH = 6;
 
 /**
  * Account creation.
@@ -138,7 +129,7 @@ export default function SignUpForm() {
           required
         />
         <p id="signup-password-hint" className="mt-1.5 text-xs text-foreground/50">
-          At least {PASSWORD_MIN_LENGTH} characters.
+          {PASSWORD_HINT}
         </p>
       </div>
 
