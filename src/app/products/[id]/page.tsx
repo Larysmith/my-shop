@@ -1,24 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import AddToCartForm from "@/components/product/AddToCartForm";
-import ProductImage from "@/components/product/ProductImage";
+import ProductPurchasePanel from "@/components/product/ProductPurchasePanel";
+import ProductArt, { artForProduct } from "@/components/product/ProductArt";
+import { getDefaultVariant, getProduct, catalog } from "@/lib/catalog";
 import { formatPrice } from "@/lib/pricing";
-import { getSampleProduct, sampleProducts } from "@/lib/sample-products";
 
 type ProductPageProps = {
   params: Promise<{ id: string }>;
 };
 
 export function generateStaticParams() {
-  return sampleProducts.map((product) => ({ id: product.id }));
+  return catalog.map((product) => ({ id: product.id }));
 }
 
 export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
   const { id } = await params;
-  const product = getSampleProduct(id);
+  const product = getProduct(id);
 
   if (!product) {
     return { title: "Product not found" };
@@ -32,67 +32,71 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params;
-  const product = getSampleProduct(id);
+  const product = getProduct(id);
 
   if (!product) {
     notFound();
   }
 
+  const related = catalog.filter((p) => p.id !== product.id).slice(0, 3);
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1.5 text-sm text-foreground/60 transition-colors hover:text-foreground"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="size-4"
-          aria-hidden="true"
+      <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
+        <Link
+          href="/"
+          className="text-foreground/60 transition-colors hover:text-foreground"
         >
-          <path d="M15.75 19.5 8.25 12l7.5-7.5" />
-        </svg>
-        All products
-      </Link>
+          Home
+        </Link>
+        <span aria-hidden="true" className="text-foreground/30">
+          /
+        </span>
+        <Link
+          href="/products"
+          className="text-foreground/60 transition-colors hover:text-foreground"
+        >
+          Products
+        </Link>
+        <span aria-hidden="true" className="text-foreground/30">
+          /
+        </span>
+        <span className="text-foreground">{product.name}</span>
+      </nav>
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-2 lg:gap-16">
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-foreground/10">
-          <ProductImage product={product} />
-        </div>
-
-        <div className="lg:pt-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            {product.name}
-          </h1>
-          <p className="mt-3 text-xl font-semibold tabular-nums text-foreground">
-            {formatPrice(product.price)}
-          </p>
-          <p className="mt-6 max-w-prose text-base leading-7 text-foreground/70">
-            {product.description}
-          </p>
-
-          <div className="mt-8">
-            <AddToCartForm product={product} />
-          </div>
-
-          <dl className="mt-10 space-y-3 border-t border-foreground/10 pt-6 text-sm">
-            <div className="flex justify-between gap-4">
-              <dt className="text-foreground/60">Product code</dt>
-              <dd className="font-medium text-foreground">{product.id.toUpperCase()}</dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-foreground/60">Shipping</dt>
-              <dd className="font-medium text-foreground">
-                Free over $75, otherwise $5
-              </dd>
-            </div>
-          </dl>
-        </div>
+      <div className="mt-6">
+        <ProductPurchasePanel product={product} />
       </div>
+
+      <section className="mt-16 border-t border-foreground/10 pt-10">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">
+          You may also like
+        </h2>
+        <div className="mt-5 grid gap-6 sm:grid-cols-3">
+          {related.map((item) => (
+            <Link
+              key={item.id}
+              href={`/products/${item.id}`}
+              className="group flex items-center gap-4 rounded-2xl border border-foreground/10 p-3 transition-colors hover:border-foreground/25"
+            >
+              <div className="relative size-16 shrink-0 overflow-hidden rounded-xl">
+                <ProductArt
+                  kind={artForProduct(item.slug)}
+                  swatch={getDefaultVariant(item).swatch}
+                />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground group-hover:underline">
+                  {item.name}
+                </p>
+                <p className="mt-0.5 text-sm tabular-nums text-foreground/60">
+                  {formatPrice(item.priceCents)}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

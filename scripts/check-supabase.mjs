@@ -26,14 +26,29 @@ function parseEnv(text) {
 
 function isPlaceholder(value) {
   if (!value) return true;
-  return /<[^>]*>|^<placeholder>|^sbp?_|^sk_|^whsec_|^sb_publishable_<|^sb_secret_</.test(
-    value,
-  ) || value.length < 20;
+  return /[<>]/.test(value);
 }
 
 function mask(value) {
   if (!value) return "(empty)";
   return `${value.slice(0, 8)}…${value.slice(-4)} (${value.length} chars)`;
+}
+
+function describeKey(label, value) {
+  if (!value) {
+    console.log(`  ${label}: (empty)`);
+    return;
+  }
+  const badChars = [...new Set(value.replace(/[A-Za-z0-9_-]/g, ""))];
+  const problems = [];
+  if (/\s/.test(value)) problems.push("contains whitespace");
+  if (badChars.length > 0) {
+    problems.push(
+      `contains characters outside A-Z a-z 0-9 _ - : ${badChars.map((c) => JSON.stringify(c)).join(" ")}`,
+    );
+  }
+  if (/^["']|["']$/.test(value)) problems.push("has a stray quote");
+  console.log(`  ${label}: ${value.length} chars, ${problems.length === 0 ? "format OK" : problems.join("; ")}`);
 }
 
 async function probe(label, url, key) {
@@ -80,6 +95,10 @@ for (const [name, value] of [
 ]) {
   if (isPlaceholder(value)) missing.push(name);
 }
+
+console.log("\nKey format check (values never printed):");
+describeKey("publishable key", publishable);
+describeKey("secret key     ", secret);
 
 console.log("\nConfigured values (masked, never printed in full):");
 console.log(`  NEXT_PUBLIC_SUPABASE_URL          ${url || "(empty)"}`);

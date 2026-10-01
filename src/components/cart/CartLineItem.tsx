@@ -3,7 +3,8 @@
 import { useCart } from "@/components/cart/useCart";
 import type { CartLine } from "@/lib/cart/types";
 import { formatPrice } from "@/lib/pricing";
-import ProductImage from "@/components/product/ProductImage";
+import { getDefaultVariant, getProduct } from "@/lib/catalog";
+import ProductArt, { artForProduct } from "@/components/product/ProductArt";
 import QuantityStepper from "@/components/product/QuantityStepper";
 
 type CartLineItemProps = {
@@ -13,16 +14,18 @@ type CartLineItemProps = {
 export default function CartLineItem({ line }: CartLineItemProps) {
   const { setQuantity, removeItem } = useCart();
 
+  // Resolve the swatch from the catalog so the thumbnail matches the variant
+  // the buyer actually chose, rather than a generic default.
+  const product = getProduct(line.productId);
+  const variant =
+    product?.variants.find((v) => v.id === line.variantId) ??
+    (product ? getDefaultVariant(product) : undefined);
+  const swatch = variant?.swatch ?? "#d8d4cc";
+
   return (
     <li className="flex gap-4 py-6 first:pt-0">
       <div className="relative size-20 shrink-0 overflow-hidden rounded-xl border border-foreground/10 sm:size-24">
-        <ProductImage
-          product={{
-            id: line.productId,
-            name: line.name,
-            image_url: line.imageUrl,
-          }}
-        />
+        <ProductArt kind={artForProduct(line.productId)} swatch={swatch} />
       </div>
 
       <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

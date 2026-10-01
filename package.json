@@ -8,12 +8,22 @@
     "start": "next start --port 3001",
     "lint": "eslint",
     "check:supabase": "node scripts/check-supabase.mjs",
+    "db:apply": "node scripts/db-apply.mjs",
+    "db:schema": "node scripts/db-schema.mjs",
+    "db:verify": "node scripts/verify-rls.mjs",
+    "db:catalog": "node scripts/catalog-probe.mjs",
+    "db:probe:checkout": "node scripts/probe-checkout-rpc.mjs",
+    "db:reseed": "node scripts/generate-reseed.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.2",
     "next": "16.3.8",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "stripe": "^23.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -23,6 +33,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
+    "pg": "^8.23.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

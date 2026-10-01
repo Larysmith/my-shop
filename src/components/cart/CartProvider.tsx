@@ -17,6 +17,9 @@ export type AddableProduct = {
   name: string;
   priceCents: number;
   imageUrl: string | null;
+  variantId?: string;
+  variantTitle?: string;
+  sku?: string;
 };
 
 type CartState = {
@@ -55,7 +58,13 @@ function reducer(state: CartState, action: CartAction): CartState {
         ...state,
         lines: state.lines.map((line) =>
           line.productId === action.item.productId
-            ? { ...line, quantity: clampQuantity(line.quantity + action.quantity) }
+            ? {
+                ...line,
+                // Re-adding the same product merges into one line and adopts the
+                // newly chosen variant, so a price change is never stale.
+                ...action.item,
+                quantity: clampQuantity(line.quantity + action.quantity),
+              }
             : line,
         ),
       };

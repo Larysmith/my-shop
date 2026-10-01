@@ -9,6 +9,11 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: "list",
+  // The dev server compiles routes on first request. With several workers
+  // hitting dynamic routes at once, the default 5s is not enough and tests fail
+  // non-deterministically. Raise it rather than patch individual assertions.
+  timeout: 45_000,
+  expect: { timeout: 15_000 },
   use: {
     baseURL,
     trace: "on-first-retry",
