@@ -8,6 +8,8 @@
     "start": "next start --port 3001",
     "lint": "eslint",
     "check:supabase": "node scripts/check-supabase.mjs",
+    "check:email": "node scripts/check-email-provider.mjs",
+    "email:test": "node --conditions=react-server scripts/send-test-email.mjs",
     "db:apply": "node scripts/db-apply.mjs",
     "db:schema": "node scripts/db-schema.mjs",
     "db:verify": "node scripts/verify-rls.mjs",
@@ -15,6 +17,7 @@
     "db:probe:checkout": "node scripts/probe-checkout-rpc.mjs",
     "db:reseed": "node scripts/generate-reseed.mjs",
     "images:update": "node scripts/update-product-images.ts",
+    "test:unit": "node --conditions=react-server --import ./tests/register.mjs --test tests/*.test.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

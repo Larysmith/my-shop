@@ -2,7 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
-import { sendViaBrevo } from "./brevo";
+import { resolveProvider } from "./config";
 import {
   recipientFor,
   renderEmail,
@@ -17,11 +17,11 @@ export type SendOrderEmailResult = {
 };
 
 /**
- * Renders an order email and hands it to Brevo, then records the attempt in
- * `email_log` whatever the outcome. A delivery failure must never throw into
- * the caller's transaction — the caller is usually a Stripe webhook or an
- * order status update, and losing that work because an email failed would be
- * worse than a missing email.
+ * Renders an order email and hands it to the configured provider, then records
+ * the attempt in `email_log` whatever the outcome. A delivery failure must never
+ * throw into the caller's transaction — the caller is usually a Stripe webhook
+ * or an order status update, and losing that work because an email failed would
+ * be worse than a missing email.
  */
 export async function sendOrderEmail(input: {
   orderId: string | null;
@@ -58,26 +58,33 @@ export async function sendOrderEmail(input: {
     const rendered = renderEmail(template, order, siteUrl);
     const to = recipientFor(template, order, merchantEmail);
 
-    // A fresh key per call: retries inside sendViaBrevo reuse it, so an
+    const provider = resolveProvider();
+    if (!provider) {
+      throw new Error(
+        "Email delivery is disabled (EMAIL_PROVIDER=none). No message was sent.",
+      );
+    }
+
+    // A fresh key per call: retries inside the transport reuse it, so an
     // ambiguous failure cannot double-send, while an intentional resend of the
     // same template still produces a genuinely new message.
-    const result = await sendViaBrevo(
+    const result = await provider.sender(
       {
-        sender: {
-          email: requireSenderEmail(),
-          name: process.env.BREVO_FROM_NAME || undefined,
+        from: {
+          email: requireSenderEmail(provider.fromEmailVariable, provider.name),
+          name: provider.fromName || undefined,
         },
-        to: [to],
+        to,
         subject: rendered.subject,
-        htmlContent: rendered.html,
-        textContent: rendered.text,
+        html: rendered.html,
+        text: rendered.text,
         tags: [template, "order-email"],
       },
       { idempotencyKey: crypto.randomUUID() },
     );
 
     status = "sent";
-    providerId = result.messageId;
+    providerId = result.providerId;
   } catch (caught) {
     error = caught instanceof Error ? caught.message : String(caught);
   }
@@ -87,11 +94,11 @@ export async function sendOrderEmail(input: {
   return { status, providerId, error };
 }
 
-function requireSenderEmail(): string {
-  const email = process.env.BREVO_FROM_EMAIL;
+function requireSenderEmail(variable: string, providerName: string): string {
+  const email = process.env[variable];
   if (!email) {
     throw new Error(
-      "Missing required environment variable BREVO_FROM_EMAIL. It must be verified in Brevo.",
+      `Missing required environment variable ${variable}. It must be verified in ${providerName}.`,
     );
   }
   return email;

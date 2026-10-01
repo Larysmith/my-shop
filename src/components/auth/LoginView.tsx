@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/auth/AuthProvider";
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
+import PasswordSignInForm from "@/components/auth/PasswordSignInForm";
 import { useDemo } from "@/components/demo/DemoProvider";
 import { DEMO_MODE } from "@/lib/demo/types";
 
@@ -54,21 +55,44 @@ export default function LoginView() {
         </p>
       )}
 
-      {DEMO_MODE ? <DemoSignIn /> : <GoogleSignInButton className="h-11 w-full" />}
-
       {DEMO_MODE ? (
-        <p className="mt-6 text-xs leading-5 text-foreground/50">
-          Demo mode uses seeded accounts instead of real Google OAuth.
-        </p>
+        <>
+          <DemoSignIn />
+          <p className="mt-6 text-xs leading-5 text-foreground/50">
+            Demo mode uses seeded accounts instead of real Google OAuth.
+          </p>
+        </>
       ) : (
-        <p className="mt-6 text-xs leading-5 text-foreground/50">
-          You can also{" "}
-          <Link href="/track-order" className="underline underline-offset-2">
-            track an order
-          </Link>{" "}
-          without signing in.
-        </p>
+        <>
+          <GoogleSignInButton className="h-11 w-full" />
+          <Divider />
+          <PasswordSignInForm />
+          <p className="mt-6 text-sm leading-6 text-foreground/55">
+            Need an account?{" "}
+            <Link
+              href="/signup"
+              className="font-medium text-foreground underline underline-offset-4"
+            >
+              Create one
+            </Link>
+            . You can also{" "}
+            <Link href="/track-order" className="underline underline-offset-2">
+              track an order
+            </Link>{" "}
+            without signing in.
+          </p>
+        </>
       )}
+    </div>
+  );
+}
+
+function Divider() {
+  return (
+    <div className="my-6 flex items-center gap-3">
+      <span className="h-px flex-1 bg-foreground/12" />
+      <span className="text-xs uppercase tracking-wider text-foreground/40">or</span>
+      <span className="h-px flex-1 bg-foreground/12" />
     </div>
   );
 }

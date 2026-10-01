@@ -4,7 +4,7 @@ A small apparel-and-homegoods store built with Next.js 16 (App Router), React 19
 TypeScript and Tailwind v4.
 
 The app ships in **demo mode**: the entire shop runs in the browser with no backend, so you
-can click through every feature without Supabase, Stripe or Brevo being configured.
+can click through every feature without Supabase, Stripe or an email provider being configured.
 
 ```bash
 npm install
@@ -49,8 +49,8 @@ in `localStorage`, so clearing site data resets everything.
 | Cart, pricing, totals | Real | Same code |
 | Checkout | Simulated in `localStorage` | Stripe hosted Checkout + `create_pending_order` RPC |
 | Orders | Simulated store | `orders` / `order_items` / `order_events` |
-| Email | Simulated log | Brevo `POST /v3/smtp/email` via `src/lib/server/email/`, writing `email_log` |
-| Auth | Demo account picker | Google OAuth via Supabase Auth (PKCE) |
+| Email | Simulated log | Brevo or Mailgun via `EMAIL_PROVIDER`, through `src/lib/server/email/`, writing `email_log` |
+| Auth | Demo account picker | Google OAuth or email + password, via Supabase Auth (PKCE) |
 | Admin | Working against demo data | Same UI, service-role reads |
 
 Set `NEXT_PUBLIC_DEMO_MODE=false` to switch to the Supabase-backed path. The proxy skips
@@ -84,7 +84,10 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 | `npm run build` / `npm start` | Production build and serve |
 | `npm run lint` | ESLint |
 | `npx tsc --noEmit` | Typecheck |
-| `npm run test:e2e` | 10 Playwright tests: cart persistence + full demo journey |
+| `npm run check:email` | Email provider preflight: authenticates, checks the sending domain and recipients. Sends nothing |
+| `npm run email:test` | Sends one real test email through the configured transport |
+| `npm run test:unit` | Node test runner over the email provider switch and retry policy |
+| `npm run test:e2e` | 19 Playwright tests: cart persistence + full demo journey |
 | `npm run check:supabase` | Masked credential and connectivity probe |
 | `npm run db:schema` / `db:apply` / `db:verify` | Inspect, migrate, and verify the database |
 | `npm run db:catalog` | Print the live catalog shape and variants per product |
@@ -116,18 +119,32 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
   200 began answering 400 consistently. Storing those would let product images rot silently.
   Already-downloaded files are reused; `-- --force` re-fetches.
 - **Email** — `src/lib/server/email/` renders the four templates in `templates.ts` (HTML plus a
-  plain-text alternative), posts them to Brevo in `brevo.ts`, and records every attempt in
-  `email_log` in `send.ts`. A delivery failure is logged, not thrown: callers are Stripe
-  webhooks and status transitions, which must not roll back because Brevo was down.
+  plain-text alternative), posts them through the transport named by `EMAIL_PROVIDER`
+  (`brevo.ts` or `mailgun.ts`), and records every attempt in `email_log` in `send.ts`. A delivery
+  failure is logged, not thrown: callers are Stripe webhooks and status transitions, which must
+  not roll back because the provider was down. `EMAIL_PROVIDER` accepts `brevo`, `mailgun`, or
+  `none`; unset is a configuration error rather than a silent default, and `none` refuses to send
+  while still writing the failed row so the gap stays auditable.
+- **Retry semantics differ per provider, deliberately.** Brevo de-duplicates on `Idempotency-Key`,
+  so a retry after an ambiguous network fault cannot double-send. Mailgun documents no idempotency
+  key for sends, so `mailgun.ts` retries only a 429 — provably not queued — and treats a timeout as
+  terminal. A lost email is recoverable from `email_log`; a duplicate confirmation reaches a real
+  customer and cannot be recalled.
 
 ## Not built yet
 
 Google OAuth, reading the catalog from Supabase, the admin fulfillment UI against live orders,
 real product photography, and deployment.
 
-Stripe and Brevo are wired but have never run against their live APIs. Stripe needs a test
-`sk_test_` key plus `stripe listen --forward-to localhost:3001/api/stripe/webhook`. Brevo needs an
-`xkeysib-` key and a verified sender.
+Stripe and the email transport are wired. Mailgun has been verified live: credentials authenticate,
+the sandbox sending domain is active, and a test email was accepted. Stripe still needs a test
+`sk_test_` key plus `stripe listen --forward-to localhost:3001/api/stripe/webhook`.
+
+The active Mailgun domain is a **sandbox** (`sandbox*.mailgun.org`), which only delivers to
+authorized recipients who have clicked Mailgun's activation email — real customers will receive
+nothing. Its `MAILGUN_FROM_EMAIL` is also a personal Gmail address rather than a domain Mailgun is
+authorized to send for, so mail will very likely be marked as spoofed. Add a custom domain and send
+from `orders@<your-domain>` before taking real orders.
 
 `order_confirmation` and `owner_new_order` fire from the webhook. `order_shipped` and
 `owner_shipped` fire from the admin status transition, which is not built yet.

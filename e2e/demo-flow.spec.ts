@@ -18,6 +18,20 @@ test.beforeEach(async ({ page }) => {
   await page.evaluate(() => window.localStorage.clear());
 });
 
+test("the demo login page offers no real sign-in method", async ({ page }) => {
+  // Demo and production are mutually exclusive by build flag. This guards the
+  // separation: the one-click admin-granting demo picker must never share a page
+  // with real credential forms.
+  await page.goto("/login");
+
+  await expect(page.getByText("Demo accounts")).toBeVisible();
+  await expect(page.getByRole("button", { name: /owner@lary-shop.test/ })).toBeVisible();
+
+  await expect(page.getByRole("button", { name: "Sign in with Google" })).toHaveCount(0);
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
+  await expect(page.getByText("Demo mode").first()).toBeVisible();
+});
+
 test("guest can check out and lands on a confirmed order", async ({ page }) => {
   await addFirstProduct(page);
 

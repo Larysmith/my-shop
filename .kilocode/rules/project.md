@@ -2,14 +2,13 @@
 
 ## Stack
 
-Next.js (App Router), TypeScript, Tailwind CSS, Supabase, Brevo.
+Next.js (App Router), TypeScript, Tailwind CSS, Supabase, Brevo or Mailgun.
 
 - App Router only. No Pages Router.
 - TypeScript in strict mode. No `any` — if a type is genuinely unknown, use `unknown` and narrow it.
 - Tailwind for styling. No CSS-in-JS, no inline style objects except for genuinely dynamic values (such as a chart or a computed transform).
 - Supabase for auth and Postgres. All data access goes through the Supabase clients, never a direct Postgres connection string — a direct connection bypasses RLS.
-- Brevo for all transactional email. Never another provider.
-- Stripe is in use for payments even though it is not listed in the core stack above. Do not add a second payment provider.
+- Transactional email goes through the provider named by `EMAIL_PROVIDER` (`brevo`, `mailgun`, or `none`). Brevo is the default choice; Mailgun exists as a supported alternative. Adding a third provider means a new transport in `src/lib/server/email/` behind the same `EmailSender` interface — never a bespoke call site. Payments are Stripe only; do not add a second payment provider.
 
 ## Secrets
 
@@ -32,7 +31,7 @@ Next.js (App Router), TypeScript, Tailwind CSS, Supabase, Brevo.
 
 - Anything server-side lives in `/lib/server` (or is reachable only from a Server Action, Route Handler, or Server Component).
 - `/lib` holds code that is safe to import from a client component. If a module must never reach the browser, it belongs under `/lib/server`.
-- Privileged data access — the Supabase service-role client, Stripe secret operations, Brevo sending — stays in `/lib/server` and is imported only from server contexts.
+- Privileged data access — the Supabase service-role client, Stripe secret operations, email sending — stays in `/lib/server` and is imported only from server contexts.
 - Never derive an amount, price, stock level, or permission from client input. Re-read those from the database and recalculate server-side. A client that can send a value can change that value.
 - Relying on middleware for a security check is not sufficient; enforce authorization again inside the route, action, or page, because a client can skip a middleware-matched request.
 

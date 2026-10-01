@@ -15,7 +15,8 @@ export default function LoginPage() {
           Sign in
         </h1>
         <p className="mt-2 max-w-xl text-sm leading-6 text-foreground/60">
-          One click with Google. Signing in links any guest orders placed with the same email.
+          Sign in with Google or an email and password. Signing in links any guest orders placed
+          with the same email.
         </p>
       </header>
 
