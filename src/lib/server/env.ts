@@ -47,10 +47,19 @@ export function requireEnvAll(names: string[]): void {
   }
 }
 
-/** The two Supabase values every client factory needs. */
-export function requireSupabasePublicEnv(): { url: string; publishableKey: string } {
-  return {
-    url: requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    publishableKey: requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
-  };
+export { requireSupabasePublicEnv } from "@/lib/supabase/env";
+
+export function requireSupabaseSecretEnv(): string {
+  const secretKey =
+    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!secretKey) {
+    throw new Error(
+      "Missing required environment variable SUPABASE_SECRET_KEY or " +
+        "SUPABASE_SERVICE_ROLE_KEY. Set it in Netlify environment variables " +
+        "for Functions, or in .env.local for local work. Never prefix it with NEXT_PUBLIC_.",
+    );
+  }
+
+  return secretKey;
 }
