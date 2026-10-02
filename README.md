@@ -92,6 +92,8 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 | `npm run test:unit` | Node test runner over the email provider switch and retry policy |
 | `npm run test:e2e` | Playwright, run twice: the demo journey in demo mode, then the production-mode suite against a server booted with `NEXT_PUBLIC_DEMO_MODE=false`. Both modes run from this one command |
 | `npm run check:supabase` | Masked credential and connectivity probe |
+| `npm run check:env` | Lists every required variable and whether it is set, grouped by Supabase / Paystack / Email, and flags which ones must also be set as `NEXT_PUBLIC_*` on Vercel. Prints no values |
+| `npm run check:client` | Walks the import graph from every `"use client"` file and fails if one can reach a `server-only` module or the demo dataset |
 | `npm run db:schema` / `db:apply` / `db:verify` | Inspect, migrate, and verify the database |
 | `npm run db:catalog` | Print the live catalog shape and variants per product |
 | `npm run db:probe:checkout` | Exercise `create_pending_order` against the live catalog, then clean up |
@@ -99,6 +101,18 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 
 ## Architecture notes
 
+- **Catalog data has one source per mode.** `@/lib/catalog` is the demo dataset and
+  `@/lib/server/catalog` reads Postgres; server code reaches both through
+  `@/lib/server/shop-catalog`. Types and pure helpers live in `@/lib/catalog-types`
+  so client components never import a dataset. A client component resolving a
+  product against the demo file returns `undefined` in production, where ids are
+  UUIDs rather than `p-001..p-008`, and fails silently rather than loudly.
+  `npm run check:client` enforces the boundary.
+- **The build needs no environment variables and no network.** No route is
+  prerendered, so `next build` succeeds on a clean checkout with nothing
+  configured. Everything reads config at request time through
+  `@/lib/server/env`, which names the missing variable instead of failing three
+  frames away.
 - **Cart** is React Context + versioned `localStorage`, with cross-tab sync. One pricing
   module is imported by both server and client so totals cannot drift.
 - **`src/proxy.ts`** — Next 16 renamed the `middleware` convention to `proxy` and the export

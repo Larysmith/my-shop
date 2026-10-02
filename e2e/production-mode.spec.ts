@@ -99,6 +99,30 @@ test.describe("production mode", () => {
     await expect(page.getByText("Everyday Cotton Tee")).toHaveCount(0);
   });
 
+  test("clicking a product in the grid opens it, and it can be added to the cart", async ({
+    page,
+  }) => {
+    // Regression guard. The grid used to link to /products/<id>, which is a UUID in
+    // production while the PDP resolved only by slug, so every card click was a 404.
+    // Testing a hardcoded slug URL missed this entirely — the link is what broke,
+    // not the route.
+    await page.goto("/products");
+
+    await page.getByRole("link", { name: /Everyday Cotton Tee/ }).first().click();
+
+    await expect(page).toHaveURL(/\/products\/everyday-cotton-tee$/);
+    await expect(page.getByRole("heading", { name: "Everyday Cotton Tee" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Add to cart" }).first().click();
+    await expect(page.getByRole("link", { name: /^Cart,/ })).toHaveAccessibleName(/Cart, 1 item/);
+
+    await page.goto("/cart");
+    await expect(page.getByText("Everyday Cotton Tee")).toBeVisible();
+    // The thumbnail must be the catalog photo, not the generated placeholder art,
+    // which is what a lookup by UUID productId used to produce.
+    await expect(page.locator('img[src*="everyday-cotton-tee"]').first()).toBeVisible();
+  });
+
   test("the tracking form is present and rejects an unknown order", async ({ page }) => {
     await page.goto("/track-order");
 

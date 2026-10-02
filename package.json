@@ -8,6 +8,8 @@
     "start": "next start --port 3001",
     "lint": "eslint",
     "check:supabase": "node scripts/check-supabase.mjs",
+    "check:env": "node scripts/check-env.mjs",
+    "check:client": "node scripts/check-client-boundaries.mjs",
     "check:email": "node scripts/check-email-provider.mjs",
     "check:paystack": "node scripts/check-paystack.mjs",
     "auth:google": "node scripts/google-oauth-setup.mjs",

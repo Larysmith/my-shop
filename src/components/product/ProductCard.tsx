@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatPrice } from "@/lib/pricing";
-import { getDefaultVariant, type Product } from "@/lib/catalog";
+import { getDefaultVariant, type Product } from "@/lib/catalog-types";
 import AddToCartButton from "./AddToCartButton";
 import ProductImage from "./ProductImage";
 
@@ -9,7 +9,10 @@ type ProductCardProps = {
 };
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const href = `/products/${product.id}`;
+  // The slug, not the id. The id is a UUID in production and a p-00X string in
+  // demo mode, so it is neither stable nor readable in a URL. The PDP accepts
+  // both, but links should always be the canonical slug.
+  const href = `/products/${product.slug}`;
   const isSoldOut = product.variants.every((v) => v.stock === 0);
 
   return (

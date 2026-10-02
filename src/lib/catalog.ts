@@ -196,10 +196,14 @@ export const catalog: Product[] = [
 
 export const CATEGORIES = ["Apparel", "Accessories", "Home"] as const;
 
-export function getProduct(idOrSlug: string): Product | undefined {
-  return catalog.find((p) => p.id === idOrSlug || p.slug === idOrSlug);
-}
-
+/**
+ * No `getProduct` here on purpose.
+ *
+ * A lookup helper on the demo dataset invites client components to resolve
+ * products against it, which silently returns undefined in production where ids
+ * are UUIDs rather than p-001..p-008. Components read the data they were handed;
+ * server code goes through `@/lib/server/shop-catalog`.
+ */
 export function queryCatalog(args: {
   q?: string;
   category?: string;

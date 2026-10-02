@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useCart } from "@/components/cart/useCart";
-import { getDefaultVariant, type Product, type Variant } from "@/lib/catalog";
+import { getDefaultVariant, type Product, type Variant } from "@/lib/catalog-types";
 
 type AddToCartButtonProps = {
   product: Product;
@@ -35,6 +35,7 @@ export default function AddToCartButton({
     addItem(
       {
         productId: product.id,
+        slug: product.slug,
         name: product.name,
         priceAmount: chosen.priceAmount,
         imageUrl: product.imageUrl,

@@ -174,26 +174,60 @@ export async function getCatalog(): Promise<Product[]> {
   return toProducts((data ?? []) as unknown as VariantRow[]);
 }
 
-export async function getProductBySlug(slug: string): Promise<Product | undefined> {
-  const supabase = createPublicClient();
-
-  const { data, error } = await supabase
-    .from("products")
-    .select(
-      `
+const PRODUCT_SELECT = `
       id, name, slug, description, category, sort_order, image_url,
       product_variants (
         id, title, sku, price_amount, stock, position, is_default, is_active, image_url
       )
-    `,
-    )
-    .eq("slug", slug)
+    `;
+
+/** A uuid, as Postgres writes them. Used to tell an id lookup from a slug lookup. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Resolves a product from a URL segment, which may be a slug or a uuid.
+ *
+ * Both are accepted on purpose. Links use the slug, but ids turn up in the wild:
+ * older bookmarks, links shared before a slug change, and demo-era `p-00X` ids
+ * still sitting in `localStorage`. Matching only the slug made every one of those
+ * a 404.
+ *
+ * The uuid branch uses `.eq("id", …)` rather than a combined `.or()` filter: the
+ * segment comes straight from the URL, and `or()` takes a raw filter string, so
+ * a value containing a comma or parenthesis would change the meaning of the query.
+ */
+export async function getProduct(idOrSlug: string): Promise<Product | undefined> {
+  const supabase = createPublicClient();
+
+  // Slug first: it is the common case, and slug lookups are the ones worth hitting
+  // a database index on.
+  const { data: bySlug, error: slugError } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .eq("slug", idOrSlug)
     .eq("status", "active")
     .maybeSingle();
 
-  if (error) {
-    console.error(`product read failed for ${slug}:`, error.message);
+  if (slugError) {
+    console.error(`product read failed for ${idOrSlug}:`, slugError.message);
     return undefined;
+  }
+
+  let data = bySlug;
+
+  if (!data && UUID_RE.test(idOrSlug)) {
+    const byId = await supabase
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .eq("id", idOrSlug)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (byId.error) {
+      console.error(`product read failed for id ${idOrSlug}:`, byId.error.message);
+      return undefined;
+    }
+    data = byId.data;
   }
 
   if (!data) return undefined;

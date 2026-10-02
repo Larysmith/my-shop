@@ -1,4 +1,4 @@
-import type { Product } from "@/lib/catalog";
+import type { Product } from "@/lib/catalog-types";
 
 // Flat vector product artwork. Inline SVG rather than files in /public/products
 // so it stays crisp at any size, needs no image-optimizer config, and can take

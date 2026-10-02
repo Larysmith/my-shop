@@ -3,7 +3,7 @@ import "server-only";
 import { catalog as demoCatalog } from "@/lib/catalog";
 import { DEMO_MODE } from "@/lib/demo/types";
 import type { Product } from "@/lib/catalog-types";
-import { getCatalog, getProductBySlug } from "@/lib/server/catalog";
+import { getCatalog, getProduct } from "@/lib/server/catalog";
 
 /**
  * One entry point for catalog reads, whichever mode the app is in.
@@ -24,11 +24,17 @@ export async function loadCatalog(): Promise<Product[]> {
   return getCatalog();
 }
 
+/**
+ * Resolves a `/products/<segment>` URL to a product.
+ *
+ * The segment may be a slug or a uuid; see `@/lib/server/catalog`. Demo ids are
+ * `p-00X`, so the demo branch also matches on id.
+ */
 export async function loadProduct(slug: string): Promise<Product | undefined> {
   if (DEMO_MODE) {
     return demoCatalog.find((product) => product.slug === slug || product.id === slug);
   }
-  return getProductBySlug(slug);
+  return getProduct(slug);
 }
 
 export async function loadCategories(): Promise<string[]> {
@@ -37,10 +43,4 @@ export async function loadCategories(): Promise<string[]> {
   }
   const products = await getCatalog();
   return [...new Set(products.map((product) => product.category))].sort();
-}
-
-/** Slugs for static generation. Empty in demo mode, where routes are prerendered. */
-export async function loadCatalogSlugs(): Promise<string[]> {
-  const products = await loadCatalog();
-  return products.map((product) => product.slug);
 }

@@ -20,6 +20,9 @@ import process from "node:process";
 
 const root = path.resolve(import.meta.dirname, "..");
 
+/** Must match the port in playwright.config.ts and the `dev` script. */
+const port = 3001;
+
 /**
  * Stops whatever is listening on the app port.
  *
@@ -46,7 +49,7 @@ async function stopStaleDevServer() {
       const found = new Set();
       for (const line of out.split(/\r?\n/)) {
         // e.g. "TCP  0.0.0.0:3001  0.0.0.0:0  LISTENING  12345"
-        const match = line.match(/:3001\s+\S+\s+LISTENING\s+(\d+)/);
+        const match = line.match(new RegExp(`:${port}\\s+\\S+\\s+LISTENING\\s+(\\d+)`));
         if (match) found.add(match[1]);
       }
       resolve(found);
@@ -106,4 +109,16 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
+/**
+ * Clear the port so the next `npm run dev` is not blocked.
+ *
+ * The runs above had to kill whatever was listening, because the mode is baked
+ * into the bundle and each run needs a freshly compiled one. The port is left
+ * clear rather than trying to leave a server behind: a detached child does not
+ * reliably outlive this process across platforms and job objects, and silently
+ * reaped leaves a worse state than an honest "the port is free".
+ */
+await stopStaleDevServer();
+
 console.log("\nE2E passed in both demo and production mode.");
+console.log(`Port ${port} is clear. Start the app again with: npm run dev`);

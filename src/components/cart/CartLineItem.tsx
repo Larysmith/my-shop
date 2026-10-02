@@ -3,7 +3,6 @@
 import { useCart } from "@/components/cart/useCart";
 import type { CartLine } from "@/lib/cart/types";
 import { formatPrice } from "@/lib/pricing";
-import { getDefaultVariant, getProduct } from "@/lib/catalog";
 import ProductImage from "@/components/product/ProductImage";
 import QuantityStepper from "@/components/product/QuantityStepper";
 
@@ -14,13 +13,12 @@ type CartLineItemProps = {
 export default function CartLineItem({ line }: CartLineItemProps) {
   const { setQuantity, removeItem } = useCart();
 
-  // Resolve the swatch from the catalog so the thumbnail matches the variant
-  // the buyer actually chose, rather than a generic default.
-  const product = getProduct(line.productId);
-  const variant =
-    product?.variants.find((v) => v.id === line.variantId) ??
-    (product ? getDefaultVariant(product) : undefined);
-  const swatch = variant?.swatch ?? "#d8d4cc";
+  // The line already carries the name, price, slug and image the PDP saw, so this
+  // component never reads the catalog. That matters: `@/lib/catalog` is the demo
+  // dataset, whose ids are p-001..p-008, so a lookup by productId returned
+  // undefined in production, where ids are UUIDs — and the thumbnail silently
+  // fell back to placeholder art instead of failing.
+  const swatch = "#d8d4cc";
 
   return (
     <li className="flex gap-4 py-6 first:pt-0">
@@ -31,8 +29,8 @@ export default function CartLineItem({ line }: CartLineItemProps) {
           product={{
             id: line.productId,
             name: line.name,
-            slug: product?.slug,
-            imageUrl: product?.imageUrl ?? null,
+            slug: line.slug,
+            imageUrl: line.imageUrl,
             swatch,
           }}
         />

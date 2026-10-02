@@ -14,6 +14,7 @@ import { computeTotals } from "@/lib/pricing";
 
 export type AddableProduct = {
   productId: string;
+  slug?: string;
   name: string;
   priceAmount: number;
   imageUrl: string | null;

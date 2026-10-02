@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatPrice } from "@/lib/pricing";
-import { getDefaultVariant, type Product, type Variant } from "@/lib/catalog";
+import { getDefaultVariant, type Product, type Variant } from "@/lib/catalog-types";
 import ProductImage from "./ProductImage";
 import AddToCartButton from "./AddToCartButton";
 import QuantityStepper from "./QuantityStepper";

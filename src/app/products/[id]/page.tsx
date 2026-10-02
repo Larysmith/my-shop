@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import ProductPurchasePanel from "@/components/product/ProductPurchasePanel";
 import ProductImage from "@/components/product/ProductImage";
 import { getDefaultVariant } from "@/lib/catalog-types";
-import { loadCatalog, loadCatalogSlugs, loadProduct } from "@/lib/server/shop-catalog";
+import { loadCatalog, loadProduct } from "@/lib/server/shop-catalog";
 import { formatPrice } from "@/lib/pricing";
 
 type ProductPageProps = {
@@ -12,16 +12,15 @@ type ProductPageProps = {
 };
 
 /**
- * Pre-render one page per product.
+ * No `generateStaticParams` here on purpose.
  *
- * In production the slugs come from the database, so a newly added product is
- * server-rendered on first request rather than needing a rebuild. `dynamicParams`
- * defaults to true, which is what makes that work.
+ * The route is dynamic either way — it reads the auth cookie, so Next reports it
+ * as `ƒ` and never prerenders a product page. Generating params at build time
+ * therefore bought nothing and cost a live Supabase round trip during
+ * `next build`, which failed the whole build when the env vars were absent or
+ * Supabase was unreachable. A newly added product is server-rendered on its
+ * first request instead, which `dynamicParams` (default true) already allows.
  */
-export async function generateStaticParams() {
-  const slugs = await loadCatalogSlugs();
-  return slugs.map((id) => ({ id }));
-}
 
 export async function generateMetadata({
   params,
@@ -88,7 +87,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           {related.map((item) => (
             <Link
               key={item.id}
-              href={`/products/${item.id}`}
+              href={`/products/${item.slug}`}
               className="group flex items-center gap-4 rounded-2xl border border-foreground/10 p-3 transition-colors hover:border-foreground/25"
             >
               <div className="relative size-16 shrink-0 overflow-hidden rounded-xl">
