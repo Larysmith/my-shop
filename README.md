@@ -78,6 +78,19 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 
 ## Commands
 
+### Supabase configuration on Netlify
+
+The app accepts `NEXT_PUBLIC_SUPABASE_URL` with either
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+Administrative access accepts either `SUPABASE_SECRET_KEY` or
+`SUPABASE_SERVICE_ROLE_KEY`; these keys must never have a `NEXT_PUBLIC_` prefix.
+When both naming styles are set, the publishable/secret names take precedence.
+Use credentials from the same Supabase project. Make the public variables available
+to the Netlify build and server runtime, and the administrative key available to
+Functions, in the deployment context you use. Trigger a new deploy after changing
+public variables: Next.js embeds them in browser code at build time. For local work,
+set them in `.env.local` and restart the development server.
+
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Dev server on port 3001 |

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { DEMO_MODE } from "@/lib/demo/types";
+import { requireSupabasePublicEnv } from "@/lib/supabase/env";
 
 // Runs on every matched request to refresh the auth cookie before render, and
 // to enforce the /account and /admin guards. Lives outside the app directory
@@ -8,10 +9,11 @@ import { DEMO_MODE } from "@/lib/demo/types";
 // `next/headers`.
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+  const { url, publishableKey } = requireSupabasePublicEnv();
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    url,
+    publishableKey,
     {
       cookies: {
         getAll() {
