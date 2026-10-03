@@ -165,7 +165,48 @@ await call("anon cannot insert an order row", {
   expect: deny,
 });
 
-console.log("\n4. Guest lookup is intentionally public\n");
+console.log("\n4. The cart is closed to anon\n");
+// 0011 grants cart_items to authenticated and revokes it from anon explicitly,
+// because a signed-out cart lives in localStorage and has no business here. These
+// assert `deny` rather than `leakFree`: the revoke means PostgREST should refuse
+// outright, and a 200-with-zero-rows would mean the grant was broader than intended.
+await call("anon cannot read cart_items", {
+  path: "cart_items?select=product_id",
+  key: ANON,
+  expect: deny,
+});
+await call("anon cannot insert a cart_items row", {
+  path: "cart_items",
+  key: ANON,
+  method: "POST",
+  body: {
+    user_id: "00000000-0000-0000-0000-000000000000",
+    product_id: "00000000-0000-0000-0000-000000000000",
+    variant_id: "00000000-0000-0000-0000-000000000000",
+    quantity: 1,
+  },
+  expect: deny,
+});
+await call("anon cannot update cart_items", {
+  path: "cart_items?user_id=eq.00000000-0000-0000-0000-000000000000",
+  key: ANON,
+  method: "PATCH",
+  body: { quantity: 99 },
+  expect: deny,
+});
+await call("anon cannot delete cart_items", {
+  path: "cart_items?user_id=eq.00000000-0000-0000-0000-000000000000",
+  key: ANON,
+  method: "DELETE",
+  expect: deny,
+});
+// NOT covered here, and worth knowing: one authenticated user reading or writing
+// another user's cart. That is the cart_items_*_own policies, and proving it needs
+// two real user JWTs, which this script has no way to obtain. The closest thing is
+// e2e/cart-sync.spec.ts, which signs two sessions in as the same account; it does
+// not prove the accounts cannot see each other.
+
+console.log("\n5. Guest lookup is intentionally public\n");
 await call("anon can call lookup_guest_order", {
   path: "rpc/lookup_guest_order",
   key: ANON,
@@ -174,7 +215,7 @@ await call("anon can call lookup_guest_order", {
   expect: allow,
 });
 
-console.log("\n5. Service role still reaches the writers\n");
+console.log("\n6. Service role still reaches the writers\n");
 await call("secret key reads orders", { path: "orders?select=id", key: SECRET, expect: allow });
 await call("secret key can call decrement_stock", {
   path: "rpc/decrement_stock",

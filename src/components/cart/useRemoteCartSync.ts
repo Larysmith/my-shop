@@ -18,6 +18,7 @@ import {
 import { fetchCatalog } from "@/lib/catalog-client";
 import type { Product } from "@/lib/catalog-types";
 import { createClient } from "@/lib/supabase/client";
+import { createWriteQueue, type WriteQueue } from "@/lib/cart/write-queue";
 import { useCart } from "./useCart";
 
 const POLL_INTERVAL_MS = 10_000;
@@ -53,6 +54,7 @@ export function useRemoteCartSync(userId: string | null) {
   const syncedRef = useRef<CartRow[]>([]);
   const readyRef = useRef(false);
   const userRef = useRef<string | null>(null);
+  const queueRef = useRef<WriteQueue<{ id: string; desired: CartRow[] }> | null>(null);
 
   /** Applies whatever the server currently holds. Never writes. */
   const pull = useCallback(async () => {
@@ -71,6 +73,27 @@ export function useRemoteCartSync(userId: string | null) {
     }
   }, [replaceAll]);
 
+  /**
+   * Writes the desired rows, one at a time.
+   *
+   * The ordering guarantee lives in createWriteQueue, and the reason it is needed
+   * is documented there: the writes are absolute upserts, so overlapping ones
+   * landing out of order would leave the server holding an older cart than the
+   * shopper last asked for, and the next poll would adopt that older cart as the
+   * truth.
+   *
+   * What this adds is the diff. `current` is read at write time rather than when
+   * the debounce was scheduled, because a write that landed in the meantime has
+   * already updated what the server holds — comparing against the older snapshot
+   * would re-send rows that are already correct.
+   */
+  const enqueue = useCallback(
+    (id: string, desired: CartRow[]) => {
+      queueRef.current?.submit({ id, desired });
+    },
+    [],
+  );
+
   // Initialisation, re-run whenever the signed-in user changes.
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +110,26 @@ export function useRemoteCartSync(userId: string | null) {
       syncedRef.current = [];
       return;
     }
+
+    // Created here rather than at the top of the hook so its lifetime matches the
+    // signed-in session: a queue holding writes for one account must not outlive
+    // it. `send` reads syncedRef and userRef at call time, so the closure never
+    // goes stale, and `pull` is stable for the life of the component.
+    queueRef.current = createWriteQueue<{ id: string; desired: CartRow[] }>(
+      async ({ id, desired }) => {
+        const current = syncedRef.current;
+        if (sameCartRows(desired, current)) return;
+
+        await writeCartRows(createClient(), id, desired, current);
+        syncedRef.current = desired;
+      },
+      (error) => {
+        console.error("cart sync write failed:", messageOf(error));
+        // The server wins. Refetching restores agreement without the shopper
+        // having to reload, and without local and remote drifting apart.
+        void pull();
+      },
+    );
 
     async function start() {
       try {
@@ -149,6 +192,10 @@ export function useRemoteCartSync(userId: string | null) {
       userRef.current = null;
       syncedRef.current = [];
 
+      // Anything still queued was for this session and must not be sent after it.
+      queueRef.current?.reset();
+      queueRef.current = null;
+
       if (pollTimer) clearInterval(pollTimer);
       if (eventTimer) clearTimeout(eventTimer);
       if (onVisible) document.removeEventListener("visibilitychange", onVisible);
@@ -164,26 +211,18 @@ export function useRemoteCartSync(userId: string | null) {
     if (!readyRef.current || !id || !products) return;
 
     const desired = toCartRows(lines, products);
-    const current = syncedRef.current;
 
-    // Also the echo guard: after any read, the applied lines map back to exactly
-    // the rows the server has, so there is nothing to send.
-    if (sameCartRows(desired, current)) return;
+    // The echo guard: after any read, the applied lines map back to exactly the
+    // rows the server holds, so there is nothing to send. Worth checking before
+    // the debounce so a realtime delivery of our own write costs no timer.
+    if (sameCartRows(desired, syncedRef.current)) return;
 
     const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          await writeCartRows(createClient(), id, desired, current);
-          syncedRef.current = desired;
-        } catch (error) {
-          console.error("cart sync write failed:", messageOf(error));
-          // The server wins. Refetching restores agreement without the shopper
-          // having to reload, and without local and remote drifting apart.
-          await pull();
-        }
-      })();
+      enqueue(id, desired);
     }, WRITE_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [lines, pull]);
+    // userId is a dependency so that signing out clears a pending write instead of
+    // letting it fire later against whichever account is signed in by then.
+  }, [lines, userId, enqueue]);
 }

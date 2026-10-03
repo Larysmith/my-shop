@@ -2,15 +2,22 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "noUncheckedIndexedAccess": false,
     "jsx": "react-jsx"
   },
+  "//": "The seven files under ../src/lib are listed one by one on purpose. A glob over ../src/lib pulls the whole web tree into this program, including server-only modules that import through the `@/` alias this config knows nothing about and that have no business being compiled for a phone. These seven are the ones mobile/src/shared.ts re-exports, they are the only ones the app imports, and they resolve each other with relative paths only.",
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
-    "../src/lib/**/*.ts"
+    "../src/lib/pricing.ts",
+    "../src/lib/catalog-types.ts",
+    "../src/lib/catalog-rows.ts",
+    "../src/lib/cart/types.ts",
+    "../src/lib/cart/quantity.ts",
+    "../src/lib/cart/reducer.ts",
+    "../src/lib/cart/hydrate.ts",
+    "../src/lib/cart/write-queue.ts"
   ],
   "exclude": ["node_modules"]
 }

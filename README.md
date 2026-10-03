@@ -1,9 +1,9 @@
 # Lary Shop
 
 A small apparel-and-homegoods store built with Next.js 16 (App Router), React 19,
-TypeScript and Tailwind v4.
+TypeScript and Tailwind v4, with a companion Expo app in `mobile/`.
 
-The app ships in **demo mode**: the entire shop runs in the browser with no backend, so you
+The web app ships in **demo mode**: the entire shop runs in the browser with no backend, so you
 can click through every feature without Supabase, Paystack or an email provider being configured.
 
 ```bash
@@ -47,6 +47,7 @@ in `localStorage`, so clearing site data resets everything.
 | --- | --- | --- |
 | Catalog | `src/lib/catalog.ts` | `products` + `product_variants` — migrated, populated, RLS verified |
 | Cart, pricing, totals | Real | Same code |
+| Cart persistence | `localStorage`, cross-tab | `cart_items` under RLS, synced across tabs, devices and the Expo app |
 | Checkout | Simulated in `localStorage` | Paystack hosted checkout + `create_pending_order` RPC |
 | Orders | Simulated store | `orders` / `order_items` / `order_events` |
 | Email | Simulated log | Brevo or Mailgun via `EMAIL_PROVIDER`, through `src/lib/server/email/`, writing `email_log` |
@@ -57,17 +58,62 @@ Set `NEXT_PUBLIC_DEMO_MODE=false` to switch to the Supabase-backed path. The pro
 Supabase entirely when demo mode is on, so a missing or broken key can never take the demo
 down.
 
+## Cart
+
+The cart is the one piece of state both clients share, and the server is authoritative whenever
+someone is signed in.
+
+- A **guest** cart lives in `localStorage` on that device. A **signed-in** cart lives in
+  `cart_items` and reaches every device for that account.
+- On sign-in the two are merged per product: quantities are summed and clamped, and the device's
+  chosen variant wins, because it is the choice that was just made deliberately. The merge is
+  idempotent, so a second client doing it does not double anything.
+- Sync uses Supabase Realtime, a 10-second poll, and a refetch on window focus. An echo guard
+  skips the write when the applied lines already map back to exactly the rows the server holds.
+- Writes are **absolute upserts of the whole set**, never increments, so a retried write is safe.
+  Because that makes last-arrival win, they are serialized through `src/lib/cart/write-queue.ts`:
+  a request slower than the debounce window would otherwise land after a newer one and silently
+  revert the cart. That queue is shared by the website and the Expo app, and
+  `tests/write-queue.test.ts` pins the ordering.
+- No monetary amount is ever sent by a client. A row carries a product, a variant and a quantity;
+  prices are re-read from the catalog, and totals are recomputed.
+
+## Mobile app
+
+`mobile/` is an Expo Router app (SDK 57) sharing the shop's Supabase project, so a cart follows the
+same rules as the website.
+
+```bash
+cd mobile
+npm install
+npm run typecheck
+npx expo start
+```
+
+It covers catalog browsing, email + password sign-in, and the cart. Checkout stays on the web,
+because it is Paystack hosted checkout and no native Paystack SDK is used.
+
+Two things to know before running it against a real device:
+
+- **Product images need `EXPO_PUBLIC_SITE_URL`.** `products.image_url` holds site-relative paths
+  like `/products/merino-wool-socks.jpg`, which mean nothing to a device. Without that variable the
+  app renders placeholders.
+- **`profiles` has no rows yet**, so create an account through the app before testing cart sync.
+
+See `mobile/.env.example` for the variables it reads.
+
 ## Database
 
-Four ordered migrations in `supabase/migrations/` are **applied and verified** against the
+Eleven ordered migrations in `supabase/migrations/` are **applied and verified** against the
 live project. They reconcile a pre-existing schema: the 8 original products were backfilled
 into `product_variants`, money moved to integer cents, and empty `orders` / `order_items` were
-recreated.
+recreated. Migrations `0009`–`0011` add `cart_items`, its RLS policies, authenticated-only
+grants, the realtime publication and its `updated_at` trigger.
 
 ```bash
 npm run db:schema    # columns and row counts, reads no row data
 npm run db:apply     # apply migrations (Management API)
-npm run db:verify    # 13 RLS and grant assertions
+npm run db:verify    # 17 RLS and grant assertions
 ```
 
 `0004_grants.sql` matters: Postgres grants `EXECUTE` on new functions to `PUBLIC` by default,
@@ -89,14 +135,15 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 | `npm run email:smtp` / `email:smtp:verify` | Point Supabase Auth's mailer at Mailgun, or read the current config back |
 | `npm run email:probe:smtp` | Mailgun SMTP handshake, stopping at authentication. Reports why a send is refused |
 | `npm run auth:verify` | Full email+password path against live Supabase: sign up, confirm, sign in, clean up |
-| `npm run test:unit` | Node test runner over the email provider switch and retry policy |
-| `npm run test:e2e` | Playwright, run twice: the demo journey in demo mode, then the production-mode suite against a server booted with `NEXT_PUBLIC_DEMO_MODE=false`. Both modes run from this one command |
+| `npm run test:unit` | Node test runner over cart hydration, the write queue, the email provider switch and its retry policy |
+| `npm run test:e2e` | Playwright, run twice: the demo journey in demo mode, then the production-mode suite against a server booted with `NEXT_PUBLIC_DEMO_MODE=false`. Both modes run from this one command. Cart-sync specs skip unless `E2E_EMAIL` and `E2E_EMAIL_PASSWORD` are set |
 | `npm run check:supabase` | Masked credential and connectivity probe |
 | `npm run check:env` | Lists every required variable and whether it is set, grouped by Supabase / Paystack / Email, and flags which ones must also be set as `NEXT_PUBLIC_*` on Netlify. Prints no values |
 | `npm run check:client` | Walks the import graph from every `"use client"` file and fails if one can reach a `server-only` module or the demo dataset |
 | `npm run verify:deploy` | Builds and serves with `.env.local` hidden and only its values exposed as process env, reproducing the deploy host. `--no-env` reproduces a site with no variables configured at all |
 | `npm run db:schema` / `db:apply` / `db:verify` | Inspect, migrate, and verify the database |
 | `npm run db:catalog` | Print the live catalog shape and variants per product |
+| `cd mobile && npm run typecheck` | Typecheck the Expo app |
 | `npm run db:probe:checkout` | Exercise `create_pending_order` against the live catalog, then clean up |
 | `npm run db:reseed` | Regenerate `0005_reseed_catalog.sql` from `src/lib/catalog.ts` |
 
@@ -109,13 +156,22 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
   product against the demo file returns `undefined` in production, where ids are
   UUIDs rather than `p-001..p-008`, and fails silently rather than loudly.
   `npm run check:client` enforces the boundary.
+- **The Expo app shares code through one curated list.** `mobile/src/shared.ts` re-exports a
+  specific set of pure modules from `src/lib` — catalog row types, cart hydration, cart quantity,
+  the cart reducer and the write queue — and `mobile/tsconfig.json` lists those same paths
+  explicitly. Anything server-only or Supabase-dependent is deliberately excluded; the app has its
+  own thin `src/api/` layer. Adding a shared module means adding it in **both** places, because
+  that `include` list is what keeps Metro from pulling a server module into a bundle.
 - **The build needs no environment variables and no network.** No route is
   prerendered, so `next build` succeeds on a clean checkout with nothing
   configured. Everything reads config at request time through
   `@/lib/server/env`, which names the missing variable instead of failing three
   frames away.
-- **Cart** is React Context + versioned `localStorage`, with cross-tab sync. One pricing
-  module is imported by both server and client so totals cannot drift.
+- **Cart** is React Context plus a pure reducer in `src/lib/cart/`, with cross-tab sync. The
+  provider holds no I/O at all: state and totals are computed by `reducer.ts` and `quantity.ts`,
+  while `CartSync` and the two sync hooks do the reading and writing. That split is what lets the
+  Expo app import the same pure modules, and what lets `tests/` exercise cart behaviour without a
+  React renderer. One pricing module is imported by both server and client so totals cannot drift.
 - **`src/proxy.ts`** — Next 16 renamed the `middleware` convention to `proxy` and the export
   must be named `proxy`. It refreshes the Supabase session and guards `/account` and `/admin`.
 - **Checkout is publicly accessible**; only server-side service-role writes are permitted.
@@ -161,14 +217,19 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 
 ## Not built yet
 
-Google OAuth, reading the catalog from Supabase, the admin fulfillment UI against live orders,
-real product photography, and deployment.
+Google OAuth, the admin fulfillment UI against live orders, real product photography, native
+Paystack checkout in the Expo app, and deployment.
 
-Paystack and the email transport are wired. Mailgun has been verified live: credentials
-authenticate, the sandbox sending domain is active, and a test email was accepted. Paystack still
-needs a test `sk_test_` secret key plus a webhook signing secret; locally, forward events with
-`paystack listen --forward-to localhost:3001/api/paystack/webhook`, since Paystack cannot reach
-`localhost` on its own. Migrations 0007 (Paystack) and 0008 (NGN) are written but not yet applied.
+The catalog **is** read from Supabase in production — `0001`–`0008` are applied and populated, with
+8 products and 22 variants live. Paystack and the email transport are wired. Mailgun has been
+verified live: credentials authenticate, the sandbox sending domain is active, and a test email was
+accepted. Paystack still needs a test `sk_test_` secret key plus a webhook signing secret; locally,
+forward events with `paystack listen --forward-to localhost:3001/api/paystack/webhook`, since
+Paystack cannot reach `localhost` on its own.
+
+Cross-device cart sync is built and unit-tested, but has **not been proven against real hardware**:
+it needs two signed-in clients, which means either a physical phone or a second browser profile.
+The four `e2e/cart-sync.spec.ts` tests skip until `E2E_EMAIL` and `E2E_EMAIL_PASSWORD` are set.
 
 ### Auth email cannot use the Mailgun sandbox domain
 

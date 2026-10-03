@@ -3,7 +3,8 @@
  *
  * Every path crossing out of mobile/ goes through here, so the fact that the
  * phone and the website share code rather than reimplementing it is visible in
- * one place and there is exactly one set of relative paths to get right.
+ * one place and there is exactly one set of relative paths to get right. This file
+ * sits two levels below the repository root, hence `../../src`.
  *
  * Only modules with no bare imports are shared. src/lib/cart/remote.ts is not,
  * because it imports @supabase/supabase-js: resolving that from the repository's
@@ -22,7 +23,7 @@ export {
   FREE_SHIPPING_THRESHOLD_AMOUNT,
   SHOP_CURRENCY,
   SHIPPING_FLAT_AMOUNT,
-} from "../../../src/lib/pricing";
+} from "../../src/lib/pricing";
 
 export {
   findVariant,
@@ -31,7 +32,7 @@ export {
   type Product,
   type SortKey,
   type Variant,
-} from "../../../src/lib/catalog-types";
+} from "../../src/lib/catalog-types";
 
 export {
   detailsFor,
@@ -40,9 +41,9 @@ export {
   VARIANT_SELECT,
   type ProductMeta,
   type VariantRow,
-} from "../../../src/lib/catalog-rows";
+} from "../../src/lib/catalog-rows";
 
-export { clampQuantity, MAX_QUANTITY } from "../../../src/lib/cart/quantity";
+export { clampQuantity, MAX_QUANTITY } from "../../src/lib/cart/quantity";
 
 export {
   cartReducer,
@@ -50,7 +51,7 @@ export {
   type AddableProduct,
   type CartAction,
   type CartState,
-} from "../../../src/lib/cart/reducer";
+} from "../../src/lib/cart/reducer";
 
 export {
   cartRowKey,
@@ -58,6 +59,11 @@ export {
   mergeCartRows,
   toCartRows,
   type CartRow,
-} from "../../../src/lib/cart/hydrate";
+} from "../../src/lib/cart/hydrate";
 
-export type { CartLine } from "../../../src/lib/cart/types";
+export {
+  createWriteQueue,
+  type WriteQueue,
+} from "../../src/lib/cart/write-queue";
+
+export type { CartLine } from "../../src/lib/cart/types";

@@ -6,6 +6,7 @@ import { getSupabase } from "../api/supabase";
 import {
   cartReducer,
   computeTotals,
+  createWriteQueue,
   hydrateCartRows,
   initialCartState,
   toCartRows,
@@ -13,6 +14,7 @@ import {
   type CartLine,
   type CartRow,
   type Product,
+  type WriteQueue,
 } from "../shared";
 import { useAuth } from "./useAuth";
 
@@ -67,8 +69,7 @@ export function useCart(): CartState {
 
   const productsRef = useRef<Product[] | null>(null);
   const syncedRef = useRef<CartRow[]>([]);
-  const stateRef = useRef(state);
-  stateRef.current = state;
+  const queueRef = useRef<WriteQueue<{ id: string; desired: CartRow[] }> | null>(null);
 
   /** Applies whatever the server currently holds. Never writes. */
   const pull = useCallback(async () => {
@@ -88,6 +89,18 @@ export function useCart(): CartState {
     }
   }, [userId]);
 
+  /**
+   * Hands the desired rows to the write queue.
+   *
+   * The ordering guarantee lives in createWriteQueue, shared with the website: the
+   * writes are absolute upserts, so overlapping ones landing out of order would
+   * leave the server holding an older cart than the shopper last chose. A phone on
+   * mobile data is exactly where that happens.
+   */
+  const enqueue = useCallback((id: string, desired: CartRow[]) => {
+    queueRef.current?.submit({ id, desired });
+  }, []);
+
   // First load, and a fresh subscription whenever the signed-in user changes.
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +118,26 @@ export function useCart(): CartState {
       setReady(true);
       return;
     }
+
+    // Scoped to the session: a queue holding writes for one account must not
+    // outlive it. `send` reads syncedRef at call time, so the closure stays fresh.
+    queueRef.current = createWriteQueue<{ id: string; desired: CartRow[] }>(
+      async ({ id, desired }) => {
+        const current = syncedRef.current;
+        if (sameCartRows(desired, current)) return;
+
+        await writeCartRows(id, desired, current);
+        syncedRef.current = desired;
+        setError(null);
+      },
+      (problem) => {
+        console.error("cart write failed:", problem);
+        // The server wins. Restoring from it means the two agree again without the
+        // shopper reloading, and without the two drifting apart quietly.
+        setError("Could not save that change. Your cart was restored.");
+        void pull();
+      },
+    );
 
     void (async () => {
       try {
@@ -140,6 +173,10 @@ export function useCart(): CartState {
 
     return () => {
       cancelled = true;
+      // Anything still queued was for this session and must not be sent after it.
+      queueRef.current?.reset();
+      queueRef.current = null;
+
       if (pollTimer) clearInterval(pollTimer);
       if (eventTimer) clearTimeout(eventTimer);
       if (channel) void getSupabase().removeChannel(channel);
@@ -153,30 +190,19 @@ export function useCart(): CartState {
     if (!products) return;
 
     const desired = toCartRows(state.lines, products);
-    const current = syncedRef.current;
 
     // Also the echo guard: after any read, the applied lines map back to exactly
     // the rows the server holds, so there is nothing to send.
-    if (sameCartRows(desired, current)) return;
+    if (sameCartRows(desired, syncedRef.current)) return;
 
     const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          await writeCartRows(userId, desired, current);
-          syncedRef.current = desired;
-          setError(null);
-        } catch (problem) {
-          console.error("cart write failed:", problem);
-          // The server wins. Restoring from it means the two agree again without
-          // the shopper reloading, and without the two drifting apart quietly.
-          setError("Could not save that change. Your cart was restored.");
-          await pull();
-        }
-      })();
+      enqueue(userId, desired);
     }, WRITE_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [state.lines, userId, ready, pull]);
+    // userId is a dependency so signing out clears a pending write rather than
+    // letting it fire against whichever account is signed in by then.
+  }, [state.lines, userId, ready, enqueue]);
 
   const addItem = useCallback((item: AddableProduct, quantity = 1) => {
     dispatch({ type: "add", item, quantity });
