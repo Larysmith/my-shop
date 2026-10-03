@@ -1,15 +1,15 @@
 /**
- * Simulates a Vercel build and serves the result.
+ * Simulates a deploy-host build and serves the result.
  *
- * Vercel ignores `.env.local` (it is gitignored) and builds using only the
- * variables configured on the project. That is the one condition never tested
+ * The deploy host ignores `.env.local` (it is gitignored) and builds using only
+ * the variables configured on the site. That is the one condition never tested
  * locally, because locally `.env.local` supplies everything and quietly papers
  * over anything missing from the real environment.
  *
  * So: hide `.env.local`, expose only its values as process env, build, and serve
- * the built output on a spare port. If the app works here it will boot on Vercel.
+ * the built output on a spare port. If the app works here it will boot on Netlify.
  *
- *   node scripts/verify-vercel-build.mjs
+ *   node scripts/verify-deploy-build.mjs
  */
 
 import { spawn } from "node:child_process";
@@ -21,7 +21,7 @@ import { dirname, join } from "node:path";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.env.VERIFY_PORT ?? 3005);
 const ENV_FILE = join(ROOT, ".env.local");
-const HIDDEN = join(ROOT, ".env.local.vercel-hidden");
+const HIDDEN = join(ROOT, ".env.local.deploy-hidden");
 
 function parseEnv(text) {
   const env = {};
@@ -45,8 +45,8 @@ function parseEnv(text) {
 
 const env = parseEnv(await readFile(join(ROOT, ".env.local"), "utf8"));
 
-// Vercel only has what is configured on the project. Everything the app needs
-// comes from the project environment, exactly as exposed here.
+// The deploy host only has what is configured on the site. Everything the app
+// needs comes from that environment, exactly as exposed here.
 //
 // --no-env builds with nothing at all, which reproduces the most common
 // misconfiguration: the repo was connected but the variables were never added.
@@ -62,7 +62,7 @@ if (!noEnv) {
 console.log(
   noEnv
     ? "Building with NO environment variables, to reproduce an unconfigured project."
-    : `Exposing ${Object.keys(exposed).length} variables to the build, as Vercel would.`,
+    : `Exposing ${Object.keys(exposed).length} variables to the build, as the deploy host would.`,
 );
 
 // Hide the file for the duration of the build and serve, so nothing can fall back
@@ -203,7 +203,7 @@ try {
 
 console.log(
   failures === 0
-    ? "\nThe build works with only project-level env. It will boot on Vercel."
+    ? "\nThe build works with only site-level env. It will boot on Netlify."
     : `\n${failures} check(s) failed.`,
 );
 process.exit(failures === 0 ? 0 : 1);

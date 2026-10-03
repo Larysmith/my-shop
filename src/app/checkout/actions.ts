@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { initializeTransaction } from "@/lib/server/paystack/client";
 import { signOrderToken } from "@/lib/server/orders/view-token";
 import { requireSiteUrl } from "@/lib/server/site-url";
+import { MissingEnvError, requireEnv } from "@/lib/server/env";
 import { computeTotals, SHOP_CURRENCY } from "@/lib/pricing";
 import type { CartLine } from "@/lib/cart/types";
 
@@ -103,6 +104,28 @@ export async function startPaystackCheckout(
     )
     .digest("hex");
 
+  // Configuration is checked before a single row is written.
+  //
+  // This used to run after `create_pending_order`, so a deploy missing
+  // NEXT_PUBLIC_SITE_URL or PAYSTACK_SECRET_KEY left an orphan pending order on
+  // every attempt: five of them, all with no paystack_reference, which is the
+  // signature of exactly this failure. It also threw outside the try/catch, so the
+  // Server Action surfaced a generic error instead of saying what was wrong.
+  let siteUrl: string;
+  try {
+    siteUrl = requireSiteUrl();
+    requireEnv("PAYSTACK_SECRET_KEY");
+  } catch (caught) {
+    if (caught instanceof MissingEnvError) {
+      console.error(`checkout blocked: ${caught.message}`);
+      return bad(
+        `Payments are not configured on this deployment (${caught.variables.join(", ")}). ` +
+          `Set the variable and try again.`,
+      );
+    }
+    throw caught;
+  }
+
   const { data: order, error: orderError } = await supabase.rpc("create_pending_order", {
     p_email: input.email.trim(),
     p_shipping: {
@@ -138,8 +161,6 @@ export async function startPaystackCheckout(
     );
     return bad("Your cart changed while you were checking out. Please review it.");
   }
-
-  const siteUrl = requireSiteUrl();
 
   // The reference is generated here, before the provider is called, so the order
   // row and the Paystack transaction share one value. If the call below fails

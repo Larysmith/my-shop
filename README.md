@@ -92,8 +92,9 @@ which would otherwise expose the `SECURITY DEFINER` writers (`create_pending_ord
 | `npm run test:unit` | Node test runner over the email provider switch and retry policy |
 | `npm run test:e2e` | Playwright, run twice: the demo journey in demo mode, then the production-mode suite against a server booted with `NEXT_PUBLIC_DEMO_MODE=false`. Both modes run from this one command |
 | `npm run check:supabase` | Masked credential and connectivity probe |
-| `npm run check:env` | Lists every required variable and whether it is set, grouped by Supabase / Paystack / Email, and flags which ones must also be set as `NEXT_PUBLIC_*` on Vercel. Prints no values |
+| `npm run check:env` | Lists every required variable and whether it is set, grouped by Supabase / Paystack / Email, and flags which ones must also be set as `NEXT_PUBLIC_*` on Netlify. Prints no values |
 | `npm run check:client` | Walks the import graph from every `"use client"` file and fails if one can reach a `server-only` module or the demo dataset |
+| `npm run verify:deploy` | Builds and serves with `.env.local` hidden and only its values exposed as process env, reproducing the deploy host. `--no-env` reproduces a site with no variables configured at all |
 | `npm run db:schema` / `db:apply` / `db:verify` | Inspect, migrate, and verify the database |
 | `npm run db:catalog` | Print the live catalog shape and variants per product |
 | `npm run db:probe:checkout` | Exercise `create_pending_order` against the live catalog, then clean up |

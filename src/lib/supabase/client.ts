@@ -3,7 +3,7 @@ import { createBrowserClient } from "@supabase/ssr";
 /**
  * Browser Supabase client.
  *
- * The two values are inlined into the bundle at build time, so on Vercel they must
+ * The two values are inlined into the bundle at build time, so on Netlify they must
  * be set as `NEXT_PUBLIC_*` project variables — a server-only copy never reaches
  * the browser. Read statically for that reason: only static property access gets
  * inlined.
@@ -25,7 +25,7 @@ export function createClient() {
     throw new Error(
       `Supabase is not configured: missing ${missing.join(", ")}. ` +
         `These are inlined into the browser bundle at build time, so they must be set ` +
-        `as NEXT_PUBLIC_* environment variables on the Vercel project and the project ` +
+        `as NEXT_PUBLIC_* environment variables on the Netlify site and the project ` +
         `rebuilt.`,
     );
   }

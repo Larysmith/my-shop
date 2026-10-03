@@ -9,7 +9,7 @@
  * Read-only. Never prints a value, only whether one is set.
  *
  *   node scripts/check-env.mjs
- *   node scripts/check-env.mjs --names-only   # the list to paste into Vercel
+ *   node scripts/check-env.mjs --names-only   # the list to paste into Netlify
  */
 
 import { readFile } from "node:fs/promises";
@@ -45,7 +45,7 @@ function isPlaceholder(value) {
 /**
  * Every variable the app reads, grouped by what breaks without it.
  *
- * `exposed: true` means it must also be set as a NEXT_PUBLIC_* variable on Vercel,
+ * `exposed: true` means it must also be set as a NEXT_PUBLIC_* variable on Netlify,
  * because those are inlined into the client bundle at build time — a server-only
  * copy does not reach the browser.
  */
@@ -98,7 +98,7 @@ for (const [group, entries] of groups) {
 }
 
 console.log(
-  "\nSet the client-exposed ones as NEXT_PUBLIC_* on Vercel too: they are inlined into the\n" +
+  "\nSet the client-exposed ones as NEXT_PUBLIC_* on Netlify too: they are inlined into\n" +
     "browser bundle at build time, so a server-only copy never reaches the client.",
 );
 

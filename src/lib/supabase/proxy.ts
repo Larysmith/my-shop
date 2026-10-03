@@ -32,7 +32,7 @@ function assertSupabaseConfigured(): void {
     throw new Error(
       `Missing required environment ${missing.length === 1 ? "variable" : "variables"}: ` +
         `${missing.join(", ")}. Add ${missing.length === 1 ? "it" : "them"} to the project's ` +
-        `Environment Variables on Vercel (and to .env.local for local work). ` +
+        `Environment Variables on Netlify (and to .env.local for local work). ` +
         `NEXT_PUBLIC_* values are inlined into the browser bundle at build time, so they ` +
         `must be set on the project, not only in a server runtime.`,
     );

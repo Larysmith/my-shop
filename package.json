@@ -12,6 +12,7 @@
     "check:client": "node scripts/check-client-boundaries.mjs",
     "check:email": "node scripts/check-email-provider.mjs",
     "check:paystack": "node scripts/check-paystack.mjs",
+    "verify:deploy": "node scripts/verify-deploy-build.mjs",
     "auth:google": "node scripts/google-oauth-setup.mjs",
     "email:test": "node --conditions=react-server scripts/send-test-email.mjs",
     "email:smtp": "node scripts/configure-auth-smtp.mjs",

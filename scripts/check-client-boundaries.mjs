@@ -3,8 +3,8 @@
  *
  * A `"use client"` file may import another `"use client"` file freely, and may
  * import plain shared modules. What it must never do is pull in a module marked
- * `import "server-only"`: that throws at build time on Vercel, and the error
- * names the importing component rather than the module that caused it.
+ * `import "server-only"`: that throws at build time on the deploy host, and the
+ * error names the importing component rather than the module that caused it.
  *
  * The second rule is the subtler one. `@/lib/catalog` is the demo dataset. A
  * component that imports it in production mode reads the wrong rows: demo ids
