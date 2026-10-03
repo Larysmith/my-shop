@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Lary Shop",
+    "slug": "lary-shop",
+    "scheme": "laryshop",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.laryshop.mobile"
+    },
+    "android": {
+      "package": "com.laryshop.mobile",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": ["expo-router", "expo-secure-store"]
+  }
+}

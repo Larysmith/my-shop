@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CartProvider } from "@/components/cart/CartProvider";
+import CartSync from "@/components/cart/CartSync";
 import { DemoProvider } from "@/components/demo/DemoProvider";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import Footer from "@/components/layout/Footer";
@@ -41,10 +42,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <CartProvider>
           {DEMO_MODE ? (
             <DemoProvider>
-              <AuthProvider>{body}</AuthProvider>
+              <AuthProvider>
+                <CartSync />
+                {body}
+              </AuthProvider>
             </DemoProvider>
           ) : (
-            <AuthProvider>{body}</AuthProvider>
+            <AuthProvider>
+              <CartSync />
+              {body}
+            </AuthProvider>
           )}
         </CartProvider>
       </body>

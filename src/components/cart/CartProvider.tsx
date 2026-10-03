@@ -3,100 +3,19 @@
 import {
   createContext,
   useCallback,
-  useEffect,
   useMemo,
   useReducer,
   type ReactNode,
 } from "react";
-import { clampQuantity, readCart, writeCart } from "@/lib/cart/storage";
+import {
+  cartReducer,
+  initialCartState,
+  type AddableProduct,
+} from "@/lib/cart/reducer";
 import type { CartLine } from "@/lib/cart/types";
 import { computeTotals } from "@/lib/pricing";
 
-export type AddableProduct = {
-  productId: string;
-  slug?: string;
-  name: string;
-  priceAmount: number;
-  imageUrl: string | null;
-  variantId?: string;
-  variantTitle?: string;
-  sku?: string;
-};
-
-type CartState = {
-  lines: CartLine[];
-  hydrated: boolean;
-};
-
-type CartAction =
-  | { type: "hydrate"; lines: CartLine[] }
-  | { type: "add"; item: AddableProduct; quantity: number }
-  | { type: "setQuantity"; productId: string; quantity: number }
-  | { type: "remove"; productId: string }
-  | { type: "clear" };
-
-const initialState: CartState = { lines: [], hydrated: false };
-
-function reducer(state: CartState, action: CartAction): CartState {
-  switch (action.type) {
-    case "hydrate":
-      return { lines: action.lines, hydrated: true };
-
-    case "add": {
-      const existing = state.lines.find(
-        (line) => line.productId === action.item.productId,
-      );
-      if (!existing) {
-        return {
-          ...state,
-          lines: [
-            ...state.lines,
-            { ...action.item, quantity: clampQuantity(action.quantity) },
-          ],
-        };
-      }
-      return {
-        ...state,
-        lines: state.lines.map((line) =>
-          line.productId === action.item.productId
-            ? {
-                ...line,
-                // Re-adding the same product merges into one line and adopts the
-                // newly chosen variant, so a price change is never stale.
-                ...action.item,
-                quantity: clampQuantity(line.quantity + action.quantity),
-              }
-            : line,
-        ),
-      };
-    }
-
-    case "setQuantity": {
-      if (action.quantity <= 0) {
-        return reducer(state, { type: "remove", productId: action.productId });
-      }
-      return {
-        ...state,
-        lines: state.lines.map((line) =>
-          line.productId === action.productId
-            ? { ...line, quantity: clampQuantity(action.quantity) }
-            : line,
-        ),
-      };
-    }
-
-    case "remove":
-      return {
-        ...state,
-        lines: state.lines.filter(
-          (line) => line.productId !== action.productId,
-        ),
-      };
-
-    case "clear":
-      return { ...state, lines: [] };
-  }
-}
+export type { AddableProduct } from "@/lib/cart/reducer";
 
 export type CartContextValue = {
   lines: CartLine[];
@@ -109,29 +28,35 @@ export type CartContextValue = {
   setQuantity: (productId: string, quantity: number) => void;
   removeItem: (productId: string) => void;
   clearCart: () => void;
+  /**
+   * Replaces the whole cart from an outside source, and marks it hydrated.
+   *
+   * Used by CartSync for every read that is not a user action: the first load,
+   * the merge that runs on sign-in, and each realtime event. `hydrated` flips
+   * here rather than at mount so the "Loading your cart…" placeholder stays up
+   * until there is something real to show.
+   */
+  replaceAll: (lines: CartLine[]) => void;
 };
 
 export const CartContext = createContext<CartContextValue | null>(null);
 
+/**
+ * Pure cart state: a reducer and the totals derived from it. No I/O.
+ *
+ * All persistence and synchronisation lives in CartSync. That split exists
+ * because this provider is mounted above AuthProvider in the root layout, so it
+ * cannot know whether the visitor is signed in — and that answer decides whether
+ * the cart is stored in localStorage or on the server. Keeping the I/O in a
+ * component that can see both contexts means the reducer stays trivially
+ * testable and the choice of storage lives in one file.
+ *
+ * The reducer itself is in @/lib/cart/reducer rather than here, because the mobile
+ * app runs the same state machine and both surfaces must merge a repeated add the
+ * same way.
+ */
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
-
-  useEffect(() => {
-    dispatch({ type: "hydrate", lines: readCart() });
-
-    function handleStorage(event: StorageEvent) {
-      if (event.key !== "lary-shop.cart.v1") return;
-      dispatch({ type: "hydrate", lines: readCart() });
-    }
-
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
-
-  useEffect(() => {
-    if (!state.hydrated) return;
-    writeCart(state.lines);
-  }, [state.lines, state.hydrated]);
+  const [state, dispatch] = useReducer(cartReducer, initialCartState);
 
   const addItem = useCallback(
     (item: AddableProduct, quantity = 1) => {
@@ -152,6 +77,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "clear" });
   }, []);
 
+  const replaceAll = useCallback((lines: CartLine[]) => {
+    dispatch({ type: "hydrate", lines });
+  }, []);
+
   const value = useMemo<CartContextValue>(() => {
     const totals = computeTotals(state.lines);
     return {
@@ -166,8 +95,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setQuantity,
       removeItem,
       clearCart,
+      replaceAll,
     };
-  }, [state.lines, state.hydrated, addItem, setQuantity, removeItem, clearCart]);
+  }, [state.lines, state.hydrated, addItem, setQuantity, removeItem, clearCart, replaceAll]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

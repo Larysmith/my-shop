@@ -32,6 +32,29 @@ export const SHIPPING_FLAT_AMOUNT = 350_000;
 // Free at ₦50,000 and above.
 export const FREE_SHIPPING_THRESHOLD_AMOUNT = 5_000_000;
 
+/**
+ * Renders a whole-unit amount with no decimals.
+ *
+ * For thresholds and flat fees only. `formatPrice` is the right renderer for
+ * anything the shopper is charged, but it is wrong for a rule that gets quoted
+ * in prose: "free over ₦50,000.00" reads as a mistake, where "₦50,000" reads as
+ * a price. Derived from the constants above so the copy cannot drift from the
+ * arithmetic that actually applies the threshold.
+ */
+export function formatPriceWhole(
+  amount: number,
+  currency: string = SHOP_CURRENCY,
+): string {
+  const locale = currency === "NGN" ? "en-NG" : "en-US";
+
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount / 100);
+}
+
 export type PricedLine = {
   priceAmount: number;
   quantity: number;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatPrice } from "@/lib/pricing";
+import { formatPrice, formatPriceWhole, FREE_SHIPPING_THRESHOLD_AMOUNT, SHIPPING_FLAT_AMOUNT } from "@/lib/pricing";
 import { getDefaultVariant, type Product, type Variant } from "@/lib/catalog-types";
 import ProductImage from "./ProductImage";
 import AddToCartButton from "./AddToCartButton";
@@ -123,8 +123,11 @@ export default function ProductPurchasePanel({ product }: { product: Product }) 
             <dd className="font-medium text-foreground">{inStockLabel(product)}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-foreground/60">Shipping</dt>
-            <dd className="font-medium text-foreground">Free over $75, otherwise $5</dd>
+<dt className="text-foreground/60">Shipping</dt>
+          <dd className="font-medium text-foreground">
+            Free over {formatPriceWhole(FREE_SHIPPING_THRESHOLD_AMOUNT)}, otherwise{" "}
+            {formatPriceWhole(SHIPPING_FLAT_AMOUNT)}
+          </dd>
           </div>
         </dl>
 

@@ -1,7 +1,8 @@
 import type { CartLine } from "./types";
 
+export { clampQuantity, MAX_QUANTITY } from "./quantity";
+
 const STORAGE_KEY = "lary-shop.cart.v1";
-const MAX_QUANTITY = 99;
 
 type PersistedCart = { version: 1; lines: CartLine[] };
 
@@ -16,11 +17,6 @@ function isCartLine(value: unknown): value is CartLine {
     line.quantity > 0 &&
     (typeof line.imageUrl === "string" || line.imageUrl === null)
   );
-}
-
-export function clampQuantity(quantity: number): number {
-  if (!Number.isFinite(quantity)) return 1;
-  return Math.min(Math.max(Math.trunc(quantity), 1), MAX_QUANTITY);
 }
 
 export function readCart(): CartLine[] {

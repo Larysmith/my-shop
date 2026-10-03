@@ -62,22 +62,35 @@ async function stopStaleDevServer() {
   if (pids.size > 0) await new Promise((resolve) => setTimeout(resolve, 1500));
 }
 
-function runPlaywright(spec, demoMode) {
+function runPlaywright(specs, demoMode) {
   return new Promise((resolve, reject) => {
-    const child = spawn("npx", ["playwright", "test", spec], {
+    const child = spawn("npx", ["playwright", "test", ...specs], {
       cwd: root,
       stdio: "inherit",
       shell: true,
       env: { ...process.env, NEXT_PUBLIC_DEMO_MODE: demoMode },
     });
-    child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${spec} failed (exit ${code})`))));
+    child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${specs.join(" ")} failed (exit ${code})`))));
     child.on("error", reject);
   });
 }
 
+/**
+ * One entry per runtime mode, each naming its own specs.
+ *
+ * cart-persistence.spec.ts used to sit outside this list and so never ran, while
+ * covering exactly the signed-out localStorage path that had to keep working when
+ * the cart moved to the database. cart-sync.spec.ts needs production mode: demo
+ * mode has no server to sync with, and the suite skips itself without
+ * E2E_EMAIL/E2E_EMAIL_PASSWORD rather than creating an account in the live
+ * database.
+ */
 const modes = [
-  { spec: "e2e/demo-flow.spec.ts", demoMode: "true" },
-  { spec: "e2e/production-mode.spec.ts", demoMode: "false" },
+  {
+    specs: ["e2e/demo-flow.spec.ts", "e2e/cart-persistence.spec.ts"],
+    demoMode: "true",
+  },
+  { specs: ["e2e/production-mode.spec.ts", "e2e/cart-sync.spec.ts"], demoMode: "false" },
 ];
 
 // A stale server started in the wrong mode would silently invalidate the run, so
@@ -85,19 +98,20 @@ const modes = [
 await stopStaleDevServer();
 
 const failures = [];
-for (const { spec, demoMode } of modes) {
+for (const { specs, demoMode } of modes) {
   const label = demoMode === "true" ? "demo mode" : "production mode";
   console.log(`\n=== E2E (${label}) ===`);
 
-  if (!existsSync(path.join(root, spec))) {
-    console.log(`skipping missing spec ${spec}`);
-    continue;
+  const present = specs.filter((spec) => existsSync(path.join(root, spec)));
+  for (const missing of specs.filter((spec) => !present.includes(spec))) {
+    console.log(`skipping missing spec ${missing}`);
   }
+  if (present.length === 0) continue;
 
   try {
-    await runPlaywright(spec, demoMode);
+    await runPlaywright(present, demoMode);
   } catch (error) {
-    failures.push(`${spec}: ${error.message}`);
+    failures.push(error.message);
   }
 
   // The next run needs a fresh bundle in the other mode.
