@@ -6,18 +6,50 @@ import { DEMO_MODE } from "@/lib/demo/types";
 // to enforce the /account and /admin guards. Lives outside the app directory
 // so it can be imported by both proxy.ts and server actions without pulling in
 // `next/headers`.
+
+/**
+ * Read statically rather than through a `requireEnv` helper.
+ *
+ * Two reasons. The proxy runs on every request, so a silent misconfiguration has
+ * to name itself here — `@/lib/server/env` cannot be imported, because this also
+ * runs in the Edge runtime. And `process.env.NEXT_PUBLIC_*` is inlined at build
+ * time, which only happens for static property access; a computed
+ * `process.env[name]` lookup is left as a runtime read and comes back undefined.
+ */
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+function assertSupabaseConfigured(): void {
+  const missing: string[] = [];
+  if (!SUPABASE_URL) missing.push("NEXT_PUBLIC_SUPABASE_URL");
+  if (!SUPABASE_PUBLISHABLE_KEY) missing.push("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+
+  if (missing.length > 0) {
+    // Thrown here on purpose. Returning NextResponse.next() would let the request
+    // through and fail later inside a page, with a less useful message. This is
+    // the first code to touch Supabase, so it is the best place to say what is
+    // wrong and where to fix it.
+    throw new Error(
+      `Missing required environment ${missing.length === 1 ? "variable" : "variables"}: ` +
+        `${missing.join(", ")}. Add ${missing.length === 1 ? "it" : "them"} to the project's ` +
+        `Environment Variables on Vercel (and to .env.local for local work). ` +
+        `NEXT_PUBLIC_* values are inlined into the browser bundle at build time, so they ` +
+        `must be set on the project, not only in a server runtime.`,
+    );
+  }
+}
+
 export async function updateSession(request: NextRequest) {
+  assertSupabaseConfigured();
+
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet, headers) {
+  const supabase = createServerClient(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet, headers) {
           for (const { name, value } of cookiesToSet) {
             request.cookies.set(name, value);
           }

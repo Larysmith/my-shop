@@ -13,6 +13,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { readFile, rename } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -46,17 +47,33 @@ const env = parseEnv(await readFile(join(ROOT, ".env.local"), "utf8"));
 
 // Vercel only has what is configured on the project. Everything the app needs
 // comes from the project environment, exactly as exposed here.
+//
+// --no-env builds with nothing at all, which reproduces the most common
+// misconfiguration: the repo was connected but the variables were never added.
+const noEnv = process.argv.includes("--no-env");
 const exposed = {};
-for (const [key, value] of Object.entries(env)) {
-  if (value) exposed[key] = value;
+
+if (!noEnv) {
+  for (const [key, value] of Object.entries(env)) {
+    if (value) exposed[key] = value;
+  }
 }
 
-console.log(`Exposing ${Object.keys(exposed).length} variables to the build, as Vercel would.`);
+console.log(
+  noEnv
+    ? "Building with NO environment variables, to reproduce an unconfigured project."
+    : `Exposing ${Object.keys(exposed).length} variables to the build, as Vercel would.`,
+);
 
 // Hide the file for the duration of the build and serve, so nothing can fall back
 // to it. Restored in the finally block below, including on Ctrl-C paths that reach
 // the catch.
 await rename(ENV_FILE, HIDDEN);
+
+// Next loads .env.local in `next start` as well as `next build`, so the rename has
+// to still be in effect when the server boots, not just when it compiles.
+console.log(`  .env.local hidden before build: ${!existsSync(ENV_FILE)}`);
+console.log(`  values exposed to the build   : ${Object.keys(exposed).length}`);
 
 function run(command, args, extraEnv) {
   return new Promise((resolve, reject) => {
@@ -130,28 +147,53 @@ try {
 
     for (const path of paths) {
       let status = 0;
+      let body = "";
       try {
         const response = await fetch(`http://localhost:${PORT}${path}`, { redirect: "manual" });
         status = response.status;
+        body = await response.text();
       } catch {
         status = 0;
       }
-      if (status === 0 || status >= 500) failures += 1;
-      console.log(`  ${String(status).padEnd(4)} ${path}`);
+
+      // A page that throws still returns 200 when an error.tsx boundary catches
+      // it, so status alone proves nothing — check the body too. This is not
+      // theoretical: an unconfigured deploy once passed here on status alone,
+      // which is how the missing-env 500 got deployed in the first place.
+      const threw =
+        /Missing required environment/i.test(body) ||
+        /Supabase is not configured/i.test(body) ||
+        /URL and Key are required/i.test(body) ||
+        /Application error|Internal Server Error/i.test(body);
+
+      if (status === 0 || status >= 500 || threw) failures += 1;
+      console.log(
+        `  ${String(status).padEnd(4)} ${path}${threw ? "   <- rendered an error" : ""}`,
+      );
     }
 
     // The check that matters most: a missing NEXT_PUBLIC_DEMO_MODE must not ship
     // the demo storefront, and the catalog must come from Postgres, not the seed.
     const catalog = await (await fetch(`http://localhost:${PORT}/products`)).text();
     const demoBanner = /Demo mode/i.test(catalog);
-    const livePhoto = catalog.includes("/products/");
+
+    // A page that throws still returns 200 when an error.tsx boundary catches it,
+    // so status alone proves nothing. Look for our own diagnostics in the body.
+    const missingEnv = catalog.match(/Missing required environment variables?:[^<"]{0,200}/)?.[0];
+    const appError = /Application error|Internal Server Error/i.test(catalog);
+
+    // Real product rows: a price rendered for an actual product name, not the
+    // static "Free shipping over ..." line in the page header.
+    const livePhoto = /\/products\/[a-z0-9-]+\.jpg/.test(catalog);
     const livePrice = /NGN\s?\d|₦\d/.test(catalog);
 
     console.log(`\n  demo banner present : ${demoBanner}  (must be false)`);
-    console.log(`  catalog photos      : ${livePhoto}  (must be true)`);
-    console.log(`  formatted NGN price : ${livePrice}  (must be true)`);
+    console.log(`  missing-env error  : ${missingEnv ?? "none"}`);
+    console.log(`  app error page     : ${appError}  (must be false)`);
+    console.log(`  catalog photos     : ${livePhoto}  (must be true)`);
+    console.log(`  formatted NGN price: ${livePrice}  (must be true)`);
 
-    if (demoBanner || !livePhoto || !livePrice) failures += 1;
+    if (demoBanner || missingEnv || appError || !livePhoto || !livePrice) failures += 1;
   }
 
   stop();
